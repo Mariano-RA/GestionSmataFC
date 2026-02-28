@@ -1,15 +1,15 @@
 import { NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/db';
+import { db } from '@/lib/db';
 
 export async function GET(request: Request) {
-    const db = await connectToDatabase();
-    const data = await db.collection('yourCollectionName').find({}).toArray();
+    // Ejemplo: obtener todos los participantes
+    const data = await db.participant.findMany();
     return NextResponse.json(data);
 }
 
 export async function POST(request: Request) {
-    const db = await connectToDatabase();
     const body = await request.json();
-    const result = await db.collection('yourCollectionName').insertOne(body);
+    // Ejemplo: crear un participante
+    const result = await db.participant.create({ data: body });
     return NextResponse.json(result);
 }
