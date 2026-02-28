@@ -64,6 +64,40 @@ export default function Debtors({
       </div>
 
       <div id="debtorsList">
+        {participants.length > 0 && (
+          <button
+            style={{
+              marginBottom: '12px',
+              padding: '6px 12px',
+              background: '#25D366',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '5px',
+              cursor: 'pointer'
+            }}
+            onClick={() => {
+              const msg =
+                '📋 Estado de cuentas (' + currentMonth + '):\n' +
+                participants
+                  .map(p => {
+                    const paid = payments
+                      .filter(pay => pay.participantId === p.id && pay.date.startsWith(currentMonth))
+                      .reduce((sum, pay) => sum + pay.amount, 0);
+                    const debt = Math.max(0, monthlyShare - paid);
+                    if (debt > 0) {
+                      return `💸 ${normalizeName(p.name)}: ${formatCurrency(debt)}`;
+                    } else {
+                      return `✅ ${normalizeName(p.name)}: COMPLETO`;
+                    }
+                  })
+                  .join('\n');
+              navigator.clipboard.writeText(msg);
+              alert('Mensaje copiado al portapapeles');
+            }}
+          >
+            Copiar estado para WhatsApp
+          </button>
+        )}
         {filtered.length === 0 ? (
           <div className="empty-state">
             <div className="empty-state-icon">✅</div>

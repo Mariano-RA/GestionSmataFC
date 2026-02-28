@@ -29,6 +29,27 @@ export default function Home() {
     loadAllData();
   }, []);
 
+  // Load monthly config when month changes
+  useEffect(() => {
+    loadMonthlyConfig();
+  }, [currentMonth]);
+
+  const loadMonthlyConfig = async () => {
+    try {
+      const res = await fetch(`/api/config?month=${currentMonth}`);
+      if (res.ok) {
+        const monthlyConfig = await res.json();
+        setConfig(prev => ({
+          ...prev,
+          monthlyTarget: monthlyConfig.monthlyTarget,
+          fieldRental: monthlyConfig.rent
+        }));
+      }
+    } catch (error) {
+      console.log('Using global config for month:', currentMonth);
+    }
+  };
+
   const loadAllData = async () => {
     try {
       const [partsRes, paysRes, expRes, cfgRes] = await Promise.all([
@@ -374,6 +395,7 @@ export default function Home() {
         {activeTab === 'settings' && (
           <Settings
             config={config}
+            currentMonth={currentMonth}
             onSave={handleSaveConfig}
             onReset={handleResetConfig}
             onExport={handleExportDatabase}

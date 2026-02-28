@@ -5,6 +5,7 @@ import type { AppConfig } from '@/types';
 
 interface SettingsProps {
   config: AppConfig;
+  currentMonth: string;
   onSave: (config: AppConfig) => void;
   onReset: () => void;
   onExport: () => void;
@@ -13,6 +14,7 @@ interface SettingsProps {
 
 export default function Settings({
   config,
+  currentMonth,
   onSave,
   onReset,
   onExport,
@@ -22,17 +24,39 @@ export default function Settings({
   const [rental, setRental] = useState(config.fieldRental.toString());
   const [maxPart, setMaxPart] = useState(config.maxParticipants.toString());
   const [notes, setNotes] = useState(config.notes);
-  const today = new Date().toISOString().split('T')[0];
-  const maxMonth = today.slice(0, 7);
 
-  const handleSave = () => {
-    onSave({
+  const handleSave = async () => {
+    const newConfig = {
       monthlyTarget: Number(monthly),
       fieldRental: Number(rental),
       maxParticipants: Number(maxPart),
       notes
-    });
-    alert('Configuración guardada');
+    };
+
+    try {
+      // Guardar configuración global
+      await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newConfig)
+      });
+
+      // Guardar configuración mensual con el mes actual (de la app, no del sistema)
+      await fetch(`/api/config?month=${currentMonth}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          monthlyTarget: Number(monthly),
+          rent: Number(rental)
+        })
+      });
+
+      onSave(newConfig);
+      alert('Configuración guardada (global y mensual)');
+    } catch (error) {
+      console.error('Error saving config:', error);
+      alert('Error al guardar configuración');
+    }
   };
 
   return (
