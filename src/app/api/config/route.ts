@@ -22,6 +22,7 @@ export async function GET() {
 
     return NextResponse.json(config);
   } catch (error) {
+    console.error('GET /api/config error', error);
     return NextResponse.json(DEFAULT_CONFIG);
   }
 }
@@ -48,6 +49,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(configData, { status: 201 });
   } catch (error) {
+    console.error('POST /api/config error', error);
     return NextResponse.json({ error: 'Failed to save config' }, { status: 500 });
   }
 }
