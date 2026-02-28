@@ -79,7 +79,7 @@ export default function Participants({
     const matchSearch = p.name.toLowerCase().includes(searchInput.toLowerCase());
     const matchFilter = filterType === 'all' || (filterType === 'active' && p.active);
     return matchSearch && matchFilter;
-  });
+  }).sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <div className="tab-content">

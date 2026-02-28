@@ -33,7 +33,7 @@ export default function Debtors({
       };
     })
     .filter(p => p.debt > 0)
-    .sort((a, b) => b.debt - a.debt);
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   let filtered = debtors;
   if (filterType === 'high') {
@@ -78,9 +78,10 @@ export default function Debtors({
               cursor: 'pointer'
             }}
             onClick={() => {
+              const sortedParticipants = participants.slice().sort((a, b) => a.name.localeCompare(b.name));
               const msg =
                 '📋 Estado de cuentas (' + currentMonth + '):\n' +
-                participants
+                sortedParticipants
                   .map(p => {
                     const paid = payments
                       .filter(pay => pay.participantId === p.id && pay.date.startsWith(currentMonth))
