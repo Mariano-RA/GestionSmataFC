@@ -9,6 +9,7 @@ export async function GET() {
     });
     return NextResponse.json(participants);
   } catch (error) {
+    console.error('GET /api/participants error', error);
     return NextResponse.json({ error: 'Failed to fetch participants' }, { status: 500 });
   }
 }

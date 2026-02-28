@@ -9,6 +9,7 @@ export async function GET() {
     });
     return NextResponse.json(expenses);
   } catch (error) {
+    console.error('GET /api/expenses error', error);
     return NextResponse.json({ error: 'Failed to fetch expenses' }, { status: 500 });
   }
 }
