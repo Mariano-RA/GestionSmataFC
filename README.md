@@ -1,172 +1,155 @@
-# Smata - Gestor de Cuentas Compartidas
+# ⚽ Smata FC - Gestor de Cuentas Compartidas
 
-Aplicación web moderna construida con **Next.js + React + TypeScript + Prisma + SQLite** para gestionar cuentas compartidas en grupos de fútbol.
+Aplicación web moderna para gestionar cuentas compartidas en grupos de fútbol. Construida con **Next.js**, **React**, **TypeScript** y **Prisma** sobre **PostgreSQL**.
 
-## 🚀 Stack Tecnológico
-
-> 📁 **Documentación adicional**
-> Los archivos de configuración y de seguimiento (SETUP, TECHNOLOGY, MIGRATION, FINISHED) se han movido a la carpeta `docs/` para mantener el directorio raíz libre de ruido.
-> 
-> Consulta esos documentos si necesitas información histórica o detalles internos.
+---
 
 ## 🚀 Stack Tecnológico
+- **Frontend:** React 18 + TypeScript + CSS
+- **Backend:** Next.js API Routes
+- **Base de Datos:** PostgreSQL (antes SQLite) + Prisma ORM
+- **Gestor de paquetes:** npm
 
-- **Frontend**: React 18 + TypeScript + CSS puro
-- **Backend**: Next.js API Routes
-- **Base de Datos**: SQLite con Prisma ORM
-- **Package Manager**: npm
+---
 
-## 📋 Funcionalidades
+## 🧩 Funcionalidades
+- Gestión de participantes
+- Registro y seguimiento de pagos
+- Control de gastos
+- Cálculo automático de deudas
+- Comparativas mensuales
+- Exportación/importación de datos
+- Interfaz responsive
 
-- ✅ Gestión de participantes
-- ✅ Registro de pagos
-- ✅ Seguimiento de gastos
-- ✅ Cálculo automático de deudas
-- ✅ Análisis y comparativas mensuales
-- ✅ Exportación de datos
-- ✅ Interfaz responsive para móviles
+---
 
-## ⚙️ Instalación
+## ⚙️ Instalación y Desarrollo
 
-### 1. Clonar o copiar el proyecto
+1. **Clona el repositorio:**
+   ```bash
+   git clone https://github.com/Mariano-RA/GestionSmataFC.git
+   cd GestionSmataFC
+   ```
+2. **Instala dependencias:**
+   ```bash
+   npm install
+   ```
+3. **Configura la base de datos:**
+   - Edita `.env` y coloca tu URL de PostgreSQL (Neon recomendado)
+   - Aplica migraciones:
+     ```bash
+     npx prisma migrate deploy
+     ```
+   - (Opcional) Seed inicial:
+     ```bash
+     node prisma/addParticipants.js
+     ```
+4. **Inicia en modo desarrollo:**
+   ```bash
+   npm run dev
+   ```
+   Accede a `http://localhost:3000`
 
-```bash
-cd smata-app
+---
+
+## 🗂️ Estructura del Proyecto
+```
+├── src/
+│   ├── app/
+│   │   ├── api/
+│   │   │   ├── config/
+│   │   │   ├── participants/
+│   │   │   ├── payments/
+│   │   │   └── expenses/
+│   │   ├── layout.tsx
+│   │   ├── page.tsx
+│   │   └── globals.css
+│   ├── components/
+│   ├── lib/
+│   └── types/
+├── prisma/
+│   ├── schema.prisma
+│   ├── addParticipants.js
+│   └── seed.js
+├── docs/
+│   ├── SETUP.md
+│   ├── TECHNOLOGY.md
+│   ├── MIGRATION.md
+│   └── FINISHED.md
+├── .env
+├── Dockerfile
+└── README.md
 ```
 
-### 2. Instalar dependencias
-
-```bash
-npm install
-```
-
-### 3. Configurar la base de datos
-
-```bash
-# Crear y migrar la base de datos
-npm run db:push
-
-# Inicializar con datos por defecto (opcional)
-npm run db:seed
-```
-
-### 4. Iniciar en modo desarrollo
-
-```bash
-npm run dev
-```
-
-La aplicación estará disponible en `http://localhost:3000`
-
-## 📁 Estructura del Proyecto
-
-```
-src/
-├── app/
-│   ├── api/                    # API Routes
-│   │   ├── config/            # Configuración
-│   │   ├── participants/       # Gestión de participantes
-│   │   ├── payments/          # Gestión de pagos
-│   │   └── expenses/          # Gestión de gastos
-│   ├── layout.tsx             # Layout principal
-│   ├── page.tsx               # Página principal
-│   └── globals.css            # Estilos globales
-├── components/                 # Componentes React
-│   ├── Header.tsx
-│   ├── Nav.tsx
-│   ├── Tabs.tsx
-│   ├── Dashboard.tsx
-│   ├── Participants.tsx
-│   ├── Payments.tsx
-│   ├── Expenses.tsx
-│   ├── Debtors.tsx
-│   ├── Comparison.tsx
-│   ├── Settings.tsx
-│   └── HistoryModal.tsx
-├── lib/
-│   ├── db.ts                  # Instancia de Prisma
-│   └── utils.ts               # Funciones utilitarias
-└── types/
-    └── index.ts               # TypeScript interfaces
-prisma/
-├── schema.prisma              # Esquema de base de datos
-└── seed.js                    # Script para inicializar BD
-
-docs/                         # Documentación adicional (migración, tecnología, etc.)
-```
+---
 
 ## 🗄️ Modelos de Base de Datos
+- **Participant:** id, name, phone, notes, active, joinDate
+- **Payment:** id, participantId, date, amount, method, note
+- **Expense:** id, name, amount, date
+- **Config:** id, key, value
 
-### Participant
-- ID, Nombre, Teléfono, Notas, Estado (activo/inactivo), Fecha de unión
+---
 
-### Payment
-- ID, Participante, Fecha, Monto, Método, Nota, Registro
-
-### Expense
-- ID, Nombre, Monto, Fecha, Registro
-
-### Config
-- ID, Clave, Valor (para configuración de la app)
-
-## 🔄 APIs Disponibles
+## 🔄 API Endpoints
 
 ### Participantes
-- `GET /api/participants` - Listar todos
-- `POST /api/participants` - Crear nuevo
-- `GET /api/participants/[id]` - Obtener uno
-- `PATCH /api/participants/[id]` - Actualizar
-- `DELETE /api/participants/[id]` - Eliminar
+- `GET /api/participants` — Listar todos
+- `POST /api/participants` — Crear nuevo
+- `GET /api/participants/[id]` — Obtener uno
+- `PATCH /api/participants/[id]` — Actualizar
+- `DELETE /api/participants/[id]` — Eliminar
 
 ### Pagos
-- `GET /api/payments` - Listar todos
-- `POST /api/payments` - Crear nuevo
-- `DELETE /api/payments/[id]` - Eliminar
+- `GET /api/payments` — Listar todos
+- `POST /api/payments` — Crear nuevo
+- `DELETE /api/payments/[id]` — Eliminar
 
 ### Gastos
-- `GET /api/expenses` - Listar todos
-- `POST /api/expenses` - Crear nuevo
-- `DELETE /api/expenses/[id]` - Eliminar
+- `GET /api/expenses` — Listar todos
+- `POST /api/expenses` — Crear nuevo
+- `DELETE /api/expenses/[id]` — Eliminar
 
 ### Configuración
-- `GET /api/config` - Obtener configuración
-- `POST /api/config` - Guardar configuración
+- `GET /api/config` — Obtener configuración
+- `POST /api/config` — Guardar configuración
 
-## 🚢 Desplegar a Producción
+---
 
-### Con Vercel (recomendado)
+## 🚢 Despliegue
 
-```bash
-npm install -g vercel
-vercel
-```
+### Vercel (recomendado)
+1. Conecta tu repo en [vercel.com](https://vercel.com)
+2. Agrega la variable de entorno `DATABASE_URL`
+3. Deploy automático
 
-### Con Docker
-
+### Docker
 ```bash
 docker build -t smata-app .
 docker run -p 3000:3000 smata-app
 ```
 
+---
+
 ## 📝 Configuración Inicial
+- **Monto mensual:** $1,510,000
+- **Alquiler:** $310,000
+- **Máximo de participantes:** 25
 
-La aplicación viene con una configuración por defecto:
-- **Monto mensual**: $1,510,000
-- **Alquiler**: $310,000
-- **Máximo de participantes**: 25
+Puedes modificar estos valores en la pestaña "Config" de la app.
 
-Puedes modificar estos valores en la pestaña "Config" de la aplicación.
+---
 
-## 💾 Respaldar Datos
+## 💾 Backup y Restore
+- Exporta todos tus datos en JSON desde la pestaña de Configuración
+- Importa datos desde un archivo JSON
 
-En la pestaña de Configuración puedes:
-- **Descargar BD**: Exporta todos tus datos en formato JSON
-- **Importar BD**: Restaura datos desde un archivo JSON previamente descargado
+---
 
 ## 🤝 Soporte
+¿Problemas o sugerencias? Abre un issue en GitHub.
 
-Si encuentras problemas o tienes sugerencias, por favor abre un issue en el repositorio.
+---
 
 ## 📄 Licencia
-
 MIT

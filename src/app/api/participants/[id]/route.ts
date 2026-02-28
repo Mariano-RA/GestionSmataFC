@@ -1,3 +1,5 @@
+export const runtime = 'nodejs';
+
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -18,6 +20,7 @@ export async function GET(
 
     return NextResponse.json(participant);
   } catch (error) {
+    console.error('GET /api/participants/[id] error', error);
     return NextResponse.json({ error: 'Failed to fetch participant' }, { status: 500 });
   }
 }
@@ -37,6 +40,7 @@ export async function PATCH(
 
     return NextResponse.json(participant);
   } catch (error) {
+    console.error('PATCH /api/participants/[id] error', error);
     return NextResponse.json({ error: 'Failed to update participant' }, { status: 500 });
   }
 }
@@ -54,6 +58,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    console.error('DELETE /api/participants/[id] error', error);
     return NextResponse.json({ error: 'Failed to delete participant' }, { status: 500 });
   }
 }

@@ -1,3 +1,5 @@
+export const runtime = 'nodejs';
+
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -13,7 +15,7 @@ export async function DELETE(
     });
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error) {    console.error('GET /api/payments/[id] error', error);    console.error('DELETE /api/payments/[id] error', error);
     return NextResponse.json({ error: 'Failed to delete payment' }, { status: 500 });
   }
 }
@@ -41,6 +43,7 @@ export async function PATCH(
 
     return NextResponse.json(payment);
   } catch (error) {
+    console.error('PATCH /api/payments/[id] error', error);
     return NextResponse.json({ error: 'Failed to update payment' }, { status: 500 });
   }
 }
