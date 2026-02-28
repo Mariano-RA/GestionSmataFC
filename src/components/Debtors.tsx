@@ -9,13 +9,15 @@ interface DebtorsProps {
   payments: Payment[];
   monthlyShare: number;
   currentMonth: string;
+  addToast: (message: string, type: 'success' | 'error' | 'info') => void;
 }
 
 export default function Debtors({
   participants,
   payments,
   monthlyShare,
-  currentMonth
+  currentMonth,
+  addToast
 }: DebtorsProps) {
   const [filterType, setFilterType] = useState('all');
 
@@ -69,8 +71,8 @@ export default function Debtors({
             style={{
               marginBottom: '12px',
               padding: '6px 12px',
-              background: '#25D366',
-              color: '#fff',
+              background: '#FFD700',
+              color: '#000',
               border: 'none',
               borderRadius: '5px',
               cursor: 'pointer'
@@ -92,7 +94,7 @@ export default function Debtors({
                   })
                   .join('\n');
               navigator.clipboard.writeText(msg);
-              alert('Mensaje copiado al portapapeles');
+              addToast('Mensaje copiado al portapapeles', 'success');
             }}
           >
             Copiar estado para WhatsApp

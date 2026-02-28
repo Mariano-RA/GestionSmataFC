@@ -202,7 +202,7 @@ export default function Participants({
               onChange={e => setNewNotes(e.target.value)}
             />
           </div>
-          <button className="btn btn-primary" onClick={handleSave}>
+          <button className="btn btn-success" onClick={handleSave}>
             {editingId === null ? 'Agregar' : 'Guardar cambios'}
           </button>
         </div>

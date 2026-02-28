@@ -10,6 +10,7 @@ interface ExpensesProps {
   onAdd: (name: string, amount: number, date: string) => void;
   onUpdate: (id: number, name: string, amount: number, date: string) => void;
   onDelete: (id: number) => void;
+  addToast: (message: string, type: 'success' | 'error' | 'info') => void;
 }
 
 export default function Expenses({
@@ -17,7 +18,8 @@ export default function Expenses({
   currentMonth,
   onAdd,
   onUpdate,
-  onDelete
+  onDelete,
+  addToast
 }: ExpensesProps) {
   const [name, setName] = useState('');
   const [amount, setAmount] = useState('');
@@ -51,7 +53,7 @@ export default function Expenses({
     if (name.trim() && amount && date) {
       onAdd(name, Number(amount), date);
       closeModal();
-      alert('Gasto registrado');
+      addToast('Gasto registrado', 'success');
     }
   };
 
@@ -152,7 +154,7 @@ export default function Expenses({
             </div>
           </div>
 
-          <button className="btn btn-primary" onClick={editingId === null ? handleAdd : handleSave}>
+          <button className="btn btn-success" onClick={editingId === null ? handleAdd : handleSave}>
             {editingId === null ? 'Registrar Gasto' : 'Guardar cambios'}
           </button>
         </div>

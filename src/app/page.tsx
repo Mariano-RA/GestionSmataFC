@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Header from '@/components/Header';
 import Nav from '@/components/Nav';
+import Toast, { type ToastMessage } from '@/components/Toast';
 import Dashboard from '@/components/Dashboard';
 import Participants from '@/components/Participants';
 import Payments from '@/components/Payments';
@@ -23,6 +24,19 @@ export default function Home() {
   const [config, setConfig] = useState<AppConfig>(DEFAULT_CONFIG);
   const [loading, setLoading] = useState(true);
   const [historyModal, setHistoryModal] = useState({ open: false, id: 0, name: '' });
+  const [toastMessages, setToastMessages] = useState<ToastMessage[]>([]);
+
+  const addToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    const id = Date.now().toString();
+    setToastMessages(prev => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToastMessages(prev => prev.filter(m => m.id !== id));
+    }, 3000);
+  };
+
+  const removeToast = (id: string) => {
+    setToastMessages(prev => prev.filter(m => m.id !== id));
+  };
 
   // Load data on mount
   useEffect(() => {
@@ -277,10 +291,10 @@ export default function Home() {
       
       // You would need to implement bulk import endpoints
       // For now, show success message
-      alert('Importación completada');
+      addToast('Importación completada', 'success');
       await loadAllData();
     } catch (error) {
-      alert('Error al importar: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      addToast('Error al importar: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error');
     }
   };
 
@@ -298,6 +312,7 @@ export default function Home() {
   return (
     <>
       <Header />
+      <Toast messages={toastMessages} onRemove={removeToast} />
       
       <div className="container">
         <div style={{
@@ -362,12 +377,14 @@ export default function Home() {
             onAdd={handleAddPayment}
             onUpdate={handleUpdatePayment}
             onDelete={handleDeletePayment}
+            addToast={addToast}
           />
         )}
 
         {activeTab === 'expenses' && (
           <Expenses
             expenses={expenses}
+            addToast={addToast}
             currentMonth={currentMonth}
             onAdd={handleAddExpense}
             onUpdate={handleUpdateExpense}
@@ -380,6 +397,7 @@ export default function Home() {
             payments={payments}
             monthlyShare={monthlyShare}
             currentMonth={currentMonth}
+            addToast={addToast}
           />
         )}
 
@@ -400,6 +418,7 @@ export default function Home() {
             onReset={handleResetConfig}
             onExport={handleExportDatabase}
             onImport={handleImportDatabase}
+            addToast={addToast}
           />
         )}
       </div>

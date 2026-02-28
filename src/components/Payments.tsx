@@ -11,6 +11,7 @@ interface PaymentsProps {
   onAdd: (participantId: number, date: string, amount: number, method: string, note: string) => void;
   onUpdate: (id: number, participantId: number, date: string, amount: number, method: string, note: string) => void;
   onDelete: (id: number) => void;
+  addToast: (message: string, type: 'success' | 'error' | 'info') => void;
 }
 
 export default function Payments({
@@ -19,7 +20,8 @@ export default function Payments({
   currentMonth,
   onAdd,
   onUpdate,
-  onDelete
+  onDelete,
+  addToast
 }: PaymentsProps) {
   const [participantId, setParticipantId] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -59,7 +61,7 @@ export default function Payments({
     if (participantId && date && amount) {
       onAdd(Number(participantId), date, Number(amount), method, note);
       closeModal();
-      alert('Pago registrado');
+      addToast('Pago registrado', 'success');
     }
   };
 
@@ -201,7 +203,7 @@ export default function Payments({
               rows={2}
             />
           </div>
-          <button className="btn btn-primary" onClick={editingId === null ? handleAdd : handleSave}>
+          <button className="btn btn-success" onClick={editingId === null ? handleAdd : handleSave}>
             {editingId === null ? 'Registrar Pago' : 'Guardar cambios'}
           </button>
         </div>

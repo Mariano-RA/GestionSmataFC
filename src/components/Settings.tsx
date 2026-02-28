@@ -10,6 +10,7 @@ interface SettingsProps {
   onReset: () => void;
   onExport: () => void;
   onImport: (file: File) => void;
+  addToast: (message: string, type: 'success' | 'error' | 'info') => void;
 }
 
 export default function Settings({
@@ -18,7 +19,8 @@ export default function Settings({
   onSave,
   onReset,
   onExport,
-  onImport
+  onImport,
+  addToast
 }: SettingsProps) {
   const [monthly, setMonthly] = useState(config.monthlyTarget.toString());
   const [rental, setRental] = useState(config.fieldRental.toString());
@@ -52,10 +54,10 @@ export default function Settings({
       });
 
       onSave(newConfig);
-      alert('Configuración guardada (global y mensual)');
+      addToast('Configuración guardada (global y mensual)', 'success');
     } catch (error) {
       console.error('Error saving config:', error);
-      alert('Error al guardar configuración');
+      addToast('Error al guardar configuración', 'error');
     }
   };
 
@@ -103,7 +105,7 @@ export default function Settings({
         />
       </div>
 
-      <button className="btn btn-primary" onClick={handleSave}>
+      <button className="btn btn-success" onClick={handleSave}>
         Guardar Config
       </button>
       <button className="btn btn-secondary" onClick={onReset} style={{ marginTop: '10px' }}>

@@ -96,7 +96,7 @@ body {
 }
 
 .progress-fill {
-  background: linear-gradient(90deg, var(--success), var(--secondary));
+  background: linear-gradient(90deg, #D4AF37, #FFD700);
   height: 100%;
   display: flex;
   align-items: center;
@@ -203,6 +203,14 @@ select:focus {
 
 .btn-danger {
   background: var(--danger);
+  color: white;
+  width: auto;
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.btn-success {
+  background: #27ae60;
   color: white;
   width: auto;
   padding: 6px 12px;
