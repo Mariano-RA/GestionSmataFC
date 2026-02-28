@@ -43,9 +43,19 @@ export default function Home() {
       const exps = await expRes.json();
       const cfg = await cfgRes.json();
 
-      setParticipants(parts);
-      setPayments(pays);
-      setExpenses(exps);
+      if (partsRes.status !== 200) {
+        throw new Error(parts.error || 'Failed to load participants');
+      }
+      if (paysRes.status !== 200) {
+        throw new Error(pays.error || 'Failed to load payments');
+      }
+      if (expRes.status !== 200) {
+        throw new Error(exps.error || 'Failed to load expenses');
+      }
+
+      setParticipants(Array.isArray(parts) ? parts : []);
+      setPayments(Array.isArray(pays) ? pays : []);
+      setExpenses(Array.isArray(exps) ? exps : []);
       setConfig(cfg || DEFAULT_CONFIG);
       setLoading(false);
     } catch (error) {
