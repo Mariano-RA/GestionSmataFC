@@ -1,0 +1,32 @@
+'use client';
+
+interface TabsProps {
+  activeTab: string;
+  onTabChange: (tab: string) => void;
+}
+
+export default function Tabs({ activeTab, onTabChange }: TabsProps) {
+  const tabs = [
+    { id: 'dashboard', icon: '📊', label: 'Dashboard' },
+    { id: 'participants', icon: '👥', label: 'Participantes' },
+    { id: 'payments', icon: '💰', label: 'Pagos' },
+    { id: 'expenses', icon: '💸', label: 'Gastos' },
+    { id: 'debtors', icon: '⚠️', label: 'Deudores' },
+    { id: 'comparison', icon: '📈', label: 'Análisis' },
+    { id: 'settings', icon: '⚙️', label: 'Config' }
+  ];
+
+  return (
+    <div className="tabs">
+      {tabs.map(tab => (
+        <button
+          key={tab.id}
+          className={`tab-btn ${activeTab === tab.id ? 'active' : ''}`}
+          onClick={() => onTabChange(tab.id)}
+        >
+          {tab.icon} {tab.label}
+        </button>
+      ))}
+    </div>
+  );
+}
