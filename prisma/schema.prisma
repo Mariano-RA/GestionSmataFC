@@ -40,6 +40,7 @@ model Expense {
   name      String
   amount    Int
   date      String    // YYYY-MM-DD
+  category  String    @default("Otros") // Alquiler, Arbitraje, Equipamiento, Otros
   recordedAt DateTime  @default(now())
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt

@@ -23,6 +23,7 @@ export interface Expense {
   name: string;
   amount: number;
   date: string;
+  category: string;
   recordedAt: string;
 }
 
@@ -31,6 +32,12 @@ export interface AppConfig {
   fieldRental: number;
   maxParticipants: number;
   notes: string;
+}
+
+export interface MonthlyConfig {
+  month: string;
+  monthlyTarget: number;
+  rent: number;
 }
 
 export interface ParticipantStats {

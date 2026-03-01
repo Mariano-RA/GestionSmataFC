@@ -13,7 +13,7 @@ import Comparison from '@/components/Comparison';
 import Settings from '@/components/Settings';
 import HistoryModal from '@/components/HistoryModal';
 import { getCurrentMonth, addMonths, DEFAULT_CONFIG } from '@/lib/utils';
-import type { Participant, Payment, Expense, AppConfig } from '@/types';
+import type { Participant, Payment, Expense, AppConfig, MonthlyConfig } from '@/types';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -22,6 +22,8 @@ export default function Home() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [config, setConfig] = useState<AppConfig>(DEFAULT_CONFIG);
+  const [globalConfig, setGlobalConfig] = useState<AppConfig>(DEFAULT_CONFIG);
+  const [monthlyConfigs, setMonthlyConfigs] = useState<MonthlyConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [historyModal, setHistoryModal] = useState({ open: false, id: 0, name: '' });
   const [toastMessages, setToastMessages] = useState<ToastMessage[]>([]);
@@ -46,21 +48,39 @@ export default function Home() {
   // Load monthly config when month changes
   useEffect(() => {
     loadMonthlyConfig();
-  }, [currentMonth]);
+    loadMonthlyConfigs();
+  }, [currentMonth, globalConfig]);
+
+  const loadMonthlyConfigs = async () => {
+    try {
+      const res = await fetch('/api/config?allMonths=true');
+      if (res.ok) {
+        const data = await res.json();
+        setMonthlyConfigs(Array.isArray(data) ? data : []);
+      }
+    } catch (error) {
+      console.log('Using global config history fallback');
+    }
+  };
 
   const loadMonthlyConfig = async () => {
     try {
       const res = await fetch(`/api/config?month=${currentMonth}`);
       if (res.ok) {
         const monthlyConfig = await res.json();
-        setConfig(prev => ({
-          ...prev,
-          monthlyTarget: monthlyConfig.monthlyTarget,
-          fieldRental: monthlyConfig.rent
-        }));
+        // Normalizar la respuesta: MonthlyConfig tiene 'rent', AppConfig tiene 'fieldRental'
+        const fieldRentalValue = monthlyConfig.rent !== undefined ? monthlyConfig.rent : monthlyConfig.fieldRental;
+        setConfig({
+          ...globalConfig,
+          monthlyTarget: monthlyConfig.monthlyTarget || globalConfig.monthlyTarget,
+          fieldRental: fieldRentalValue || globalConfig.fieldRental
+        });
+      } else {
+        setConfig(globalConfig);
       }
     } catch (error) {
       console.log('Using global config for month:', currentMonth);
+      setConfig(globalConfig);
     }
   };
 
@@ -92,6 +112,7 @@ export default function Home() {
       setPayments(Array.isArray(pays) ? pays : []);
       setExpenses(Array.isArray(exps) ? exps : []);
       setConfig(cfg || DEFAULT_CONFIG);
+      setGlobalConfig(cfg || DEFAULT_CONFIG);
       setLoading(false);
     } catch (error) {
       console.error('Error loading data:', error);
@@ -100,7 +121,8 @@ export default function Home() {
   };
 
   const activeParticipants = participants.filter(p => p.active).length || 1;
-  const monthlyShare = config.monthlyTarget / activeParticipants;
+  const monthlyObjective = (config.monthlyTarget || 0) + (config.fieldRental || 0);
+  const monthlyShare = monthlyObjective / activeParticipants;
 
   const handleAddParticipant = async (name: string, phone: string, notes: string) => {
     try {
@@ -204,12 +226,12 @@ export default function Home() {
     }
   };
 
-  const handleAddExpense = async (name: string, amount: number, date: string) => {
+  const handleAddExpense = async (name: string, amount: number, date: string, category: string) => {
     try {
       const res = await fetch('/api/expenses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, amount, date }),
+        body: JSON.stringify({ name, amount, date, category }),
       });
       if (res.ok) {
         await loadAllData();
@@ -219,12 +241,12 @@ export default function Home() {
     }
   };
 
-  const handleUpdateExpense = async (id: number, name: string, amount: number, date: string) => {
+  const handleUpdateExpense = async (id: number, name: string, amount: number, date: string, category: string) => {
     try {
       const res = await fetch(`/api/expenses/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, amount, date })
+        body: JSON.stringify({ name, amount, date, category })
       });
       if (res.ok) {
         await loadAllData();
@@ -307,7 +329,56 @@ export default function Home() {
     (_, i) => addMonths(currentMonth, -(11 - i))
   );
 
-  const historyPayments = payments.filter(p => p.participantId === historyModal.id);
+  const historyPayments = payments
+    .filter(p => p.participantId === historyModal.id)
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  const monthlyConfigsSorted = [...monthlyConfigs].sort((a, b) => a.month.localeCompare(b.month));
+
+  const getMonthlyObjectiveForHistory = (month: string) => {
+    const exactMonthConfig = monthlyConfigsSorted.find(cfg => cfg.month === month);
+    if (exactMonthConfig) {
+      return (exactMonthConfig.monthlyTarget || 0) + (exactMonthConfig.rent || 0);
+    }
+
+    const previousConfigs = monthlyConfigsSorted.filter(cfg => cfg.month < month);
+    if (previousConfigs.length > 0) {
+      const latestPrevious = previousConfigs[previousConfigs.length - 1];
+      return (latestPrevious.monthlyTarget || 0) + (latestPrevious.rent || 0);
+    }
+
+    return (globalConfig.monthlyTarget || 0) + (globalConfig.fieldRental || 0);
+  };
+
+  const getMonthlyShareForHistory = (month: string) => {
+    const objective = getMonthlyObjectiveForHistory(month);
+    return activeParticipants > 0 ? objective / activeParticipants : 0;
+  };
+
+  const historyMonths = Array.from(
+    new Set([
+      ...historyPayments.map(p => p.date.slice(0, 7)),
+      ...monthlyConfigsSorted.filter(cfg => cfg.month <= currentMonth).map(cfg => cfg.month)
+    ])
+  ).sort();
+
+  let runningDebt = 0;
+  const historyByMonth = historyMonths.map(month => {
+    const paid = historyPayments
+      .filter(p => p.date.startsWith(month))
+      .reduce((sum, p) => sum + p.amount, 0);
+    const required = getMonthlyShareForHistory(month);
+    const debtMonth = Math.max(0, required - paid);
+    runningDebt = Math.max(0, runningDebt + required - paid);
+
+    return {
+      month,
+      paid,
+      required,
+      debtMonth,
+      debtAccumulated: runningDebt
+    };
+  });
 
   return (
     <>
@@ -316,20 +387,21 @@ export default function Home() {
       
       <div className="container">
         <div style={{
-          background: 'white',
+          background: 'var(--bg-primary)',
           padding: '15px',
           borderRadius: '8px',
           boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-          marginBottom: '20px'
+          marginBottom: '20px',
+          border: '1px solid var(--border)',
         }}>
-          <div style={{ fontSize: '12px', color: 'var(--border)', fontWeight: '500', marginBottom: '8px' }}>
+          <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: '500', marginBottom: '8px' }}>
             📊 PROGRESO MENSUAL
           </div>
           <div className="progress-bar">
             {(() => {
               const monthPayments = payments.filter(p => p.date.startsWith(currentMonth));
               const collected = monthPayments.reduce((sum, p) => sum + p.amount, 0);
-              const progress = config.monthlyTarget > 0 ? (collected / config.monthlyTarget) * 100 : 0;
+              const progress = monthlyObjective > 0 ? (collected / monthlyObjective) * 100 : 0;
               return (
                 <div className="progress-fill" style={{ width: `${Math.min(progress, 100)}%` }}>
                   {Math.round(progress)}%
@@ -338,7 +410,7 @@ export default function Home() {
             })()}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '12px' }}>
-            <div>Objetivo: ${config.monthlyTarget.toLocaleString('es-AR')}</div>
+            <div>Objetivo: ${monthlyObjective.toLocaleString('es-AR')}</div>
             <div>Recaudado: ${payments.filter(p => p.date.startsWith(currentMonth)).reduce((s, p) => s + p.amount, 0).toLocaleString('es-AR')}</div>
           </div>
         </div>
@@ -429,6 +501,7 @@ export default function Home() {
         isOpen={historyModal.open}
         participantName={historyModal.name}
         payments={historyPayments}
+        monthlyHistory={historyByMonth}
         onClose={() => setHistoryModal({ ...historyModal, open: false })}
         onDeletePayment={handleDeletePayment}
       />

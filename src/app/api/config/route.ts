@@ -9,14 +9,22 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const month = searchParams.get('month');
+    const allMonths = searchParams.get('allMonths');
+
+    if (allMonths === 'true') {
+      const monthlyConfigs = await db.monthlyConfig.findMany({
+        orderBy: { month: 'asc' }
+      });
+      return NextResponse.json(monthlyConfigs);
+    }
 
     // Si viene month, obtener configuración mensual
     if (month) {
       const monthlyConfig = await db.monthlyConfig.findFirst({ where: { month } });
-      if (!monthlyConfig) {
-        return NextResponse.json({ error: 'No config for month' }, { status: 404 });
+      if (monthlyConfig) {
+        return NextResponse.json(monthlyConfig);
       }
-      return NextResponse.json(monthlyConfig);
+      // Si no existe config para ese mes, devolver config global como fallback
     }
 
     // Si no, obtener configuración global

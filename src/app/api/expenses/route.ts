@@ -19,7 +19,7 @@ export async function GET() {
 // POST create expense
 export async function POST(request: NextRequest) {
   try {
-    const { name, amount, date } = await request.json();
+    const { name, amount, date, category } = await request.json();
     
     if (!name || !amount || !date) {
       return NextResponse.json(
@@ -33,6 +33,7 @@ export async function POST(request: NextRequest) {
         name,
         amount: Number(amount),
         date,
+        category: category || 'Otros'
       }
     });
 

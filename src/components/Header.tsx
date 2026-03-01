@@ -1,9 +1,14 @@
 'use client';
 
+import DarkModeToggle from './DarkModeToggle';
+
 export default function Header() {
   return (
     <div className="header">
-      <h1>⚽ SMATA LIBRE ⚽</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h1>⚽ SMATA LIBRE ⚽</h1>
+        <DarkModeToggle />
+      </div>
     </div>
   );
 }

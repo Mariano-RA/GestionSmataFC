@@ -62,7 +62,7 @@ export default function Comparison({
         </div>
       </div>
 
-      <div style={{ background: 'white', padding: '15px', borderRadius: '8px', marginTop: '20px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+      <div style={{ background: 'var(--bg-primary)', padding: '15px', borderRadius: '8px', marginTop: '20px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', border: '1px solid var(--border)', color: 'var(--text)' }}>
         <h3 style={{ marginBottom: '15px', color: 'var(--primary)' }}>Detalle</h3>
         <p>📊 Mes: <strong>{getMonthName(selectedMonth)}</strong></p>
         <p>💰 Recaudado: <strong>{formatCurrency(collected)}</strong></p>

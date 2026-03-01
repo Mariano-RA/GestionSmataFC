@@ -28,13 +28,14 @@ export async function PATCH(
   try {
     const { id } = await params;
     const data = await request.json();
-    const { name, amount, date } = data;
+    const { name, amount, date, category } = data;
     const expense = await db.expense.update({
       where: { id: Number(id) },
       data: {
         name,
         amount: Number(amount),
         date,
+        category: category || 'Otros'
       }
     });
     return NextResponse.json(expense);

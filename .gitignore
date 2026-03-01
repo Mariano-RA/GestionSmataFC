@@ -10,3 +10,4 @@ dist/
 *.pem
 .env
 prisma/addParticipants.js
+prisma/migrations/
