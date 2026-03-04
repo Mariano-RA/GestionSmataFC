@@ -34,9 +34,9 @@ body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background: var(--light);
   color: var(--text);
-  padding-bottom: 100px;
+  padding-bottom: 0;
   transition: background 0.3s, color 0.3s;
-  height: 100vh;
+  min-height: 100vh;
 }
 
 .header {
@@ -188,7 +188,7 @@ body {
 .container {
   max-width: 600px;
   margin: 0 auto;
-  padding: 15px;
+  padding: 15px 15px 120px 15px;
 }
 
 .stats {
@@ -287,6 +287,7 @@ body {
 .tab-content {
   /* visible by default; React conditional rendering controls which tab is mounted */
   display: block;
+  padding-bottom: 40px;
 }
 
 /* optional, but kept for backward compatibility if you ever toggle classes */
@@ -754,11 +755,11 @@ select:focus {
 
 @media (max-width: 600px) {
   .container {
-    padding: 10px;
+    padding: 10px 10px 120px 10px;
   }
 
   body {
-    padding-bottom: 120px;
+    padding-bottom: 0;
   }
 
   .header {
