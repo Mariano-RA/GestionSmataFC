@@ -89,13 +89,13 @@ export default function Debtors({
             style={{ width: '100%', marginBottom: '12px', background: '#FFD700', color: '#000' }}
             onClick={() => {
               const msg =
-                '📋 Estado de cuentas (' + currentMonth + '):\n' +
+                `Saldos ${currentMonth} - ${formatCurrency(monthlyShare)}\n` +
                 allParticipantsStatus
                   .map(p => {
-                    if (p.debt > 0) {
-                      return `💸 ${normalizeName(p.name)}: ${formatCurrency(p.debt)} (pagó ${formatCurrency(p.paid)}/${formatCurrency(monthlyShare)})`;
+                    if (p.paid > 0) {
+                      return `${normalizeName(p.name)}: ${formatCurrency(p.paid)}`;
                     } else {
-                      return `✅ ${normalizeName(p.name)}: COMPLETO`;
+                      return `${normalizeName(p.name)} `;
                     }
                   })
                   .join('\n');
