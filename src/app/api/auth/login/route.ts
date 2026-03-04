@@ -45,9 +45,12 @@ export async function POST(request: NextRequest) {
     }
 
     const { email, password } = validation.data;
+    
+    // Normalizar email a minúsculas
+    const normalizedEmail = email.toLowerCase().trim();
 
     // Rate limiting
-    if (!checkRateLimit(email)) {
+    if (!checkRateLimit(normalizedEmail)) {
       return ApiResponse.rateLimited(
         'Demasiados intentos fallidos. Intenta de nuevo más tarde'
       );
@@ -55,7 +58,7 @@ export async function POST(request: NextRequest) {
 
     // Buscar usuario por email
     const user = await prisma.user.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
       include: {
         userTeams: {
           include: { team: true },
@@ -64,12 +67,12 @@ export async function POST(request: NextRequest) {
     });
 
     if (!user) {
-      logger.warn('Login attempt with non-existent email', { email });
+      logger.warn('Login attempt with non-existent email', { email: normalizedEmail });
       return ApiResponse.unauthorized('Usuario o contraseña incorrectos');
     }
 
     if (!user.active) {
-      logger.warn('Login attempt with inactive user', { email });
+      logger.warn('Login attempt with inactive user', { email: normalizedEmail });
       return ApiResponse.unauthorized('Usuario inactivo');
     }
 
@@ -77,7 +80,7 @@ export async function POST(request: NextRequest) {
     const passwordMatch = await bcrypt.compare(password, user.passwordHash);
 
     if (!passwordMatch) {
-      logger.warn('Login attempt with incorrect password', { email });
+      logger.warn('Login attempt with incorrect password', { email: normalizedEmail });
       return ApiResponse.unauthorized('Usuario o contraseña incorrectos');
     }
 
@@ -112,9 +115,9 @@ export async function POST(request: NextRequest) {
     });
 
     // Limpiar contador de intentos fallidos
-    loginAttempts.delete(email);
+    loginAttempts.delete(normalizedEmail);
 
-    logger.log('User logged in successfully', { userId: user.id, email });
+    logger.log('User logged in successfully', { userId: user.id, email: normalizedEmail });
 
     return response;
   } catch (error) {

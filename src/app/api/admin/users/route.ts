@@ -35,6 +35,11 @@ export async function GET(request: NextRequest) {
         globalRole: true,
         active: true,
         createdAt: true,
+        _count: {
+          select: {
+            userTeams: true,
+          },
+        },
         userTeams: {
           select: {
             id: true,
@@ -101,8 +106,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Validar email único
+    const normalizedEmail = email.toLowerCase().trim();
     const existingUser = await prisma.user.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
     });
 
     if (existingUser) {
@@ -118,7 +124,7 @@ export async function POST(request: NextRequest) {
     // Crear usuario
     const newUser = await prisma.user.create({
       data: {
-        email,
+        email: normalizedEmail,
         name,
         passwordHash,
         globalRole,
