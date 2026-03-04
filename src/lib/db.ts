@@ -1,4 +1,7 @@
 import { PrismaClient } from '@prisma/client';
+import { validateCriticalEnv } from './env';
+
+validateCriticalEnv();
 
 const prismaClientSingleton = () => {
   return new PrismaClient();

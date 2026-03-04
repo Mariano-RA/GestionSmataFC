@@ -91,6 +91,17 @@ export async function POST(request: NextRequest) {
       user.globalRole
     );
 
+    const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+    const refreshTokenExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        refreshTokenHash,
+        refreshTokenExpiresAt,
+      },
+    });
+
     // Crear respuesta
     const response = ApiResponse.ok({
       userId: user.id,

@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { NextRequest } from 'next/server';
+import { getRequiredEnv } from './env';
 
 // Tipos
 export interface JWTPayload {
@@ -17,8 +18,8 @@ export interface TokenPair {
 }
 
 // Configuración
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-key-change-in-production';
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key-change-in-production';
+const JWT_SECRET = getRequiredEnv('JWT_SECRET');
+const JWT_REFRESH_SECRET = getRequiredEnv('JWT_REFRESH_SECRET');
 const ACCESS_TOKEN_EXPIRY = '15m'; // 15 minutos
 const REFRESH_TOKEN_EXPIRY = '7d'; // 7 días
 
@@ -65,7 +66,7 @@ export function generateTokenPair(
  */
 export function verifyAccessToken(token: string): JWTPayload | null {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
+    const decoded = jwt.verify(token, JWT_SECRET) as unknown as JWTPayload;
     
     // Validar que sea un token de acceso
     if (decoded.type !== 'access') {
@@ -83,7 +84,7 @@ export function verifyAccessToken(token: string): JWTPayload | null {
  */
 export function verifyRefreshToken(token: string): JWTPayload | null {
   try {
-    const decoded = jwt.verify(token, JWT_REFRESH_SECRET) as JWTPayload;
+    const decoded = jwt.verify(token, JWT_REFRESH_SECRET) as unknown as JWTPayload;
     
     // Validar que sea un token de refresh
     if (decoded.type !== 'refresh') {

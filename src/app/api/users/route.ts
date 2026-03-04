@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db as prisma } from '@/lib/db';
 import bcrypt from 'bcryptjs';
-import { validateRequestAuth, getClientIp } from '@/lib/auth';
+import { validateRequestAuth, getClientIp, validateSuperAdmin } from '@/lib/auth';
 import { createUserSchema } from '@/lib/schemas';
 import { ApiResponse } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
@@ -14,6 +14,11 @@ export async function GET(request: NextRequest) {
     const auth = validateRequestAuth(request);
     if (!auth.authorized) {
       return ApiResponse.unauthorized(auth.error);
+    }
+
+    const isSuperAdmin = await validateSuperAdmin(prisma, auth.userId);
+    if (!isSuperAdmin) {
+      return ApiResponse.forbidden('Acceso denegado - Solo super admins');
     }
 
     const { searchParams } = new URL(request.url);
@@ -74,6 +79,11 @@ export async function POST(request: NextRequest) {
     }
 
     const currentUserId = auth.userId;
+    const isSuperAdmin = await validateSuperAdmin(prisma, currentUserId);
+    if (!isSuperAdmin) {
+      return ApiResponse.forbidden('Acceso denegado - Solo super admins');
+    }
+
     const body = await request.json();
 
     // Validar con Zod

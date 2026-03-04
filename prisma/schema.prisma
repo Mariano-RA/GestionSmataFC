@@ -34,6 +34,8 @@ model User {
   globalRole    String    @default("user") // super_admin, admin, user
   active        Boolean   @default(true)
   preferredTeamId Int?
+  refreshTokenHash String?
+  refreshTokenExpiresAt DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   userTeams     UserTeam[]
