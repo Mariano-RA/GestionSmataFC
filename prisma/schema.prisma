@@ -33,6 +33,7 @@ model User {
   passwordHash  String
   globalRole    String    @default("user") // super_admin, admin, user
   active        Boolean   @default(true)
+  preferredTeamId Int?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   userTeams     UserTeam[]

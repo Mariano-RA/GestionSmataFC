@@ -15,3 +15,6 @@ prisma/migrations/
 docs/
 production-cleanup.js
 generate-secrets.js
+prisma/check-teams.js
+prisma/load-team1-players.js
+prisma/load-team2-players.js

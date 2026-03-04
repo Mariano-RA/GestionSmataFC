@@ -90,11 +90,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { userId: assignUserId, teamId, role = 'admin' } = await request.json();
+    const body = await request.json();
+    const assignUserId = parseInt(body.userId);
+    const teamId = parseInt(body.teamId);
+    const role = body.role || 'admin';
 
-    if (!assignUserId || !teamId) {
+    if (!assignUserId || !teamId || isNaN(assignUserId) || isNaN(teamId)) {
       return NextResponse.json(
-        { error: 'userId y teamId requeridos' },
+        { error: 'userId y teamId requeridos (números válidos)' },
         { status: 400 }
       );
     }
@@ -178,6 +181,7 @@ export async function POST(request: NextRequest) {
         teamId,
         action: 'CREATE',
         entity: 'UserTeam',
+        entityId: newUserTeam.id,
         description: `Usuario ${userExists.email} asignado a ${teamExists.name} como ${role}`,
         metadata: JSON.stringify({ userId: assignUserId, teamId, role }),
         ipAddress: request.headers.get('x-forwarded-for') || undefined,
@@ -189,10 +193,13 @@ export async function POST(request: NextRequest) {
       data: newUserTeam,
       message: 'Usuario asignado al equipo',
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error assigning user to team:', error);
     return NextResponse.json(
-      { error: 'Error asignando usuario' },
+      { 
+        error: 'Error asignando usuario',
+        details: error?.message || 'Error desconocido'
+      },
       { status: 500 }
     );
   }

@@ -18,6 +18,7 @@ export interface CurrentUser {
   name: string;
   globalRole: 'super_admin' | 'admin' | 'user';
   teams: (Team & { role: string })[];
+  preferredTeamId?: number | null;
   actionCount?: number;
 }
 
@@ -25,6 +26,7 @@ interface UserContextType {
   user: CurrentUser | null;
   currentTeamId: number | null;
   setCurrentTeamId: (teamId: number) => void;
+  setPreferredTeam: (teamId: number) => Promise<void>;
   loading: boolean;
   error: string | null;
   logout: () => void;
@@ -88,8 +90,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
         setUser({...userData.user, teams: userData.teams });
         setIsAuthenticated(true);
 
-        // Establecer equipo por defecto (primer equipo)
-        if (userData.teams && userData.teams.length > 0) {
+        // Establecer equipo preferido, o el primer equipo si no hay preferido
+        if (userData.user.preferredTeamId && userData.teams.some(t => t.id === userData.user.preferredTeamId)) {
+          setCurrentTeamId(userData.user.preferredTeamId);
+        } else if (userData.teams && userData.teams.length > 0) {
           setCurrentTeamId(userData.teams[0].id);
         }
       } catch (err) {
@@ -130,13 +134,40 @@ export function UserProvider({ children }: { children: ReactNode }) {
     router.push('/login');
   };
 
+  const setPreferredTeam = async (teamId: number) => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      const response = await fetch('/api/auth/preferred-team', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ teamId }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update preferred team');
+      }
+
+      // Actualizar el usuario en el contexto
+      if (user) {
+        setUser({ ...user, preferredTeamId: teamId });
+      }
+      setCurrentTeamId(teamId);
+    } catch (err) {
+      logger.error('Error setting preferred team:', err);
+      throw err;
+    }
+  };
+
   // No mostrar contexto si está en login
   if (pathname === '/login') {
     return <>{children}</>;
   }
 
   return (
-    <UserContext.Provider value={{ user, currentTeamId, setCurrentTeamId, loading, error, logout, isAuthenticated }}>
+    <UserContext.Provider value={{ user, currentTeamId, setCurrentTeamId, setPreferredTeam, loading, error, logout, isAuthenticated }}>
       {children}
     </UserContext.Provider>
   );

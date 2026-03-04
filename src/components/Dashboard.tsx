@@ -66,6 +66,10 @@ export default function Dashboard({
           <h3>Mes Actual</h3>
           <div className="value">{getMonthName(currentMonth)}</div>
         </div>
+        <div className="stat-card info">
+          <h3>Jugadores Activos</h3>
+          <div className="value">{activeParticipants}</div>
+        </div>
         <div className="stat-card warning">
           <h3>Objetivo</h3>
           <div className="value">{formatCurrency(monthlyObjective)}</div>

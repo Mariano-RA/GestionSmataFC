@@ -12,6 +12,7 @@ export interface User {
   email: string;
   name: string;
   active: boolean;
+  preferredTeamId?: number | null;
   createdAt: string;
   updatedAt: string;
 }

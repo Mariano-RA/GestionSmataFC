@@ -2,15 +2,29 @@
 
 import { useUser } from '@/context/UserContext';
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import DarkModeToggle from './DarkModeToggle';
 
 export default function Header() {
   const router = useRouter();
-  const { user, currentTeamId, setCurrentTeamId, logout } = useUser();
+  const { user, currentTeamId, setCurrentTeamId, setPreferredTeam, logout } = useUser();
+  const [savingPreferred, setSavingPreferred] = useState(false);
 
   const handleTeamChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newTeamId = Number(e.target.value);
     setCurrentTeamId(newTeamId);
+  };
+
+  const handleSetPreferred = async () => {
+    if (!currentTeamId) return;
+    setSavingPreferred(true);
+    try {
+      await setPreferredTeam(currentTeamId);
+    } catch (error) {
+      console.error('Error setting preferred team:', error);
+    } finally {
+      setSavingPreferred(false);
+    }
   };
 
   if (!user) {
@@ -53,6 +67,24 @@ export default function Header() {
                   </option>
                 ))}
               </select>
+              <button
+                onClick={handleSetPreferred}
+                disabled={savingPreferred}
+                title={user.preferredTeamId === currentTeamId ? 'Este es tu equipo preferido' : 'Establecer como equipo preferido'}
+                style={{
+                  padding: '8px 10px',
+                  background: user.preferredTeamId === currentTeamId ? '#FFD700' : 'var(--bg-secondary)',
+                  color: user.preferredTeamId === currentTeamId ? '#000' : 'var(--text)',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  cursor: savingPreferred ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s ease',
+                  opacity: savingPreferred ? 0.6 : 1,
+                }}
+              >
+                {savingPreferred ? '⏳' : user.preferredTeamId === currentTeamId ? '⭐' : '☆'}
+              </button>
             </div>
           )}
           {user.teams.length === 1 && (

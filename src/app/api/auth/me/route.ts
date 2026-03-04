@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
         active: true,
         createdAt: true,
         globalRole: true,
+        preferredTeamId: true,
         userTeams: {
           where: {
             team: { active: true },
@@ -71,6 +72,7 @@ export async function GET(request: NextRequest) {
         globalRole: user.globalRole,
         active: user.active,
         createdAt: user.createdAt,
+        preferredTeamId: user.preferredTeamId,
       },
       teams: user.userTeams.map((ut) => ({
         id: ut.team.id,

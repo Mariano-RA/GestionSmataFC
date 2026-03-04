@@ -149,6 +149,7 @@ export default function Participants({
                 </span>
               </div>
               {p.phone && <p style={{ fontSize: '12px', color: '#999' }}>{p.phone}</p>}
+              {p.notes && <p style={{ fontSize: '12px', color: '#888', fontStyle: 'italic', marginBottom: '6px' }}>📝 {p.notes}</p>}
               <p style={{ fontSize: '13px', color: '#666', marginBottom: '8px' }}>
                 Pagado: ${paid.toLocaleString('es-AR')} / Requerido: ${monthlyShare.toLocaleString('es-AR')}
               </p>
