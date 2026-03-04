@@ -37,13 +37,20 @@ export async function GET(request: NextRequest) {
 // POST create expense
 export async function POST(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const teamId = parseInt(searchParams.get('teamId') || '0');
+
+    if (!teamId) {
+      return ApiResponse.badRequest('teamId is required');
+    }
+
     const body = await request.json();
-    const validation = createExpenseSchema.safeParse(body);
+    const validation = createExpenseSchema.omit({ teamId: true }).safeParse(body);
     if (!validation.success) {
       return ApiResponse.fromZodError(validation.error);
     }
 
-    const { teamId, name, amount, date, category } = validation.data;
+    const { name, amount, date, category } = validation.data;
 
     // Validar autenticación y acceso al equipo
     const auth = await validateProtectedTeamRoute(request, db, teamId);

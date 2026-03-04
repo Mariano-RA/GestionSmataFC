@@ -66,6 +66,7 @@ export const updateParticipantSchema = z.object({
   name: z.string('Nombre requerido').min(2, 'Nombre muy corto').optional(),
   phone: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
+  active: z.boolean().optional(),
 });
 
 export type UpdateParticipantRequest = z.infer<typeof updateParticipantSchema>;
