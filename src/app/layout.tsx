@@ -1,12 +1,18 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
+import { Toaster } from 'react-hot-toast';
 import './globals.css';
+import { UserProvider } from '@/context/UserContext';
 
 export const metadata: Metadata = {
   title: 'Gestor Cuentas - Fútbol PRO',
   description: 'Gestor de cuentas compartidas para grupos de fútbol',
   manifest: '/manifest.json',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
   themeColor: '#1a472a',
-  viewport: 'width=device-width, initial-scale=1.0',
 };
 
 export default function RootLayout({
@@ -16,14 +22,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es">
-      <head>
-        <meta charSet="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <meta name="theme-color" content="#1a472a" />
-        <link rel="manifest" href="/manifest.json" />
-      </head>
       <body>
-        {children}
+        <UserProvider>
+          {children}
+        </UserProvider>
+        <Toaster position="top-right" />
       </body>
     </html>
   );

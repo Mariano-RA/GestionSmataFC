@@ -55,11 +55,16 @@ export default function Expenses({
     setEditingId(null);
   };
 
-  const handleAdd = () => {
-    if (name.trim() && amount && date) {
-      onAdd(name, Number(amount), date, category);
+  const handleAdd = async () => {
+    if (!name.trim() || !amount || !date) {
+      addToast('Por favor completa todos los campos requeridos', 'error');
+      return;
+    }
+    try {
+      await onAdd(name, Number(amount), date, category);
       closeModal();
-      addToast('Gasto registrado', 'success');
+    } catch (error) {
+      console.error('Error in handleAdd:', error);
     }
   };
 
@@ -100,8 +105,8 @@ export default function Expenses({
             <option key={cat} value={cat}>{cat}</option>
           ))}
         </select>
-        <button className="btn btn-primary" onClick={openAdd} style={{ width: 'auto', padding: '8px 16px' }}>
-          + Agregar gasto
+        <button className="btn btn-primary" onClick={openAdd}>
+          ➕ Agregar Gasto
         </button>
       </div>
 
@@ -127,19 +132,18 @@ export default function Expenses({
                 </span>
               </span>
               <span className="expense-amount">{formatCurrency(e.amount)}</span>
-              <div className="card-actions">
+              <div className="card-actions btn-group">
                 <button
-                  className="btn btn-secondary"
+                  className="btn btn-secondary btn-sm"
                   onClick={() => openEdit(e)}
-                  style={{ width: 'auto', padding: '6px 12px', fontSize: '12px' }}
                 >
-                  Editar
+                  ✏️ Editar
                 </button>
                 <button
-                  className="btn btn-danger"
+                  className="btn btn-danger btn-sm"
                   onClick={() => onDelete(e.id)}
                 >
-                  X
+                  🗑️ Eliminar
                 </button>
               </div>
             </div>
@@ -199,7 +203,7 @@ export default function Expenses({
           </div>
 
           <button className="btn btn-success" onClick={editingId === null ? handleAdd : handleSave}>
-            {editingId === null ? 'Registrar Gasto' : 'Guardar cambios'}
+            {editingId === null ? '✅ Registrar Gasto' : '💾 Guardar Cambios'}
           </button>
         </div>
       </div>

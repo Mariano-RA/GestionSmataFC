@@ -12,3 +12,4 @@ export { default as Debtors } from './Debtors';
 export { default as Comparison } from './Comparison';
 export { default as Settings } from './Settings';
 export { default as HistoryModal } from './HistoryModal';
+export { default as TeamSelector } from './TeamSelector';

@@ -9,5 +9,9 @@ dist/
 .DS_Store
 *.pem
 .env
+.env.production.example
 prisma/addParticipants.js
 prisma/migrations/
+docs/
+production-cleanup.js
+generate-secrets.js

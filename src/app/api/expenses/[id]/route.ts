@@ -2,6 +2,10 @@ export const runtime = 'nodejs';
 
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
+import { validateProtectedTeamRoute, getClientIp } from '@/lib/auth';
+import { updateExpenseSchema } from '@/lib/schemas';
+import { ApiResponse } from '@/lib/api-response';
+import { logger } from '@/lib/logger';
 
 // DELETE expense
 export async function DELETE(
@@ -10,13 +14,44 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+    
+    const expense = await db.expense.findUnique({
+      where: { id: Number(id) }
+    });
+
+    if (!expense) {
+      return ApiResponse.notFound('Expense not found');
+    }
+
+    // Validar acceso al equipo
+    const auth = await validateProtectedTeamRoute(request, db, expense.teamId);
+    if (!auth.authorized) {
+      return ApiResponse.unauthorized(auth.error);
+    }
+
+    const userId = auth.userId;
+
+    // Crear log antes de eliminar
+    await db.auditLog.create({
+      data: {
+        teamId: expense.teamId,
+        userId: userId || null,
+        action: 'DELETE',
+        entity: 'Expense',
+        entityId: expense.id,
+        description: `Gasto eliminado: ${expense.name} - $${expense.amount}`,
+        metadata: JSON.stringify(expense),
+        ipAddress: getClientIp(request) || null,
+      },
+    });
+
     await db.expense.delete({
       where: { id: Number(id) }
     });
-    return NextResponse.json({ success: true });
+    return ApiResponse.ok({ success: true });
   } catch (error) {
-    console.error('DELETE /api/expenses/[id] error', error);
-    return NextResponse.json({ error: 'Failed to delete expense' }, { status: 500 });
+    logger.error('DELETE /api/expenses/[id] error', error);
+    return ApiResponse.internalError('Failed to delete expense');
   }
 }
 
@@ -27,8 +62,29 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    const data = await request.json();
-    const { name, amount, date, category } = data;
+    const body = await request.json();
+    const validation = updateExpenseSchema.safeParse(body);
+    if (!validation.success) {
+      return ApiResponse.fromZodError(validation.error);
+    }
+    const { name, amount, date, category } = validation.data;
+    
+    const currentExpense = await db.expense.findUnique({
+      where: { id: Number(id) }
+    });
+
+    if (!currentExpense) {
+      return ApiResponse.notFound('Expense not found');
+    }
+
+    // Validar acceso al equipo
+    const auth = await validateProtectedTeamRoute(request, db, currentExpense.teamId);
+    if (!auth.authorized) {
+      return ApiResponse.unauthorized(auth.error);
+    }
+
+    const userId = auth.userId;
+
     const expense = await db.expense.update({
       where: { id: Number(id) },
       data: {
@@ -38,9 +94,24 @@ export async function PATCH(
         category: category || 'Otros'
       }
     });
-    return NextResponse.json(expense);
+
+    // Crear log de auditoría
+    await db.auditLog.create({
+      data: {
+        teamId: expense.teamId,
+        userId: userId || null,
+        action: 'UPDATE',
+        entity: 'Expense',
+        entityId: expense.id,
+        description: `Gasto actualizado: ${expense.name} - $${expense.amount}`,
+        metadata: JSON.stringify({ before: currentExpense, after: expense }),
+        ipAddress: getClientIp(request) || null,
+      },
+    });
+
+    return ApiResponse.ok(expense);
   } catch (error) {
-    console.error('PATCH /api/expenses/[id] error', error);
-    return NextResponse.json({ error: 'Failed to update expense' }, { status: 500 });
+    logger.error('PATCH /api/expenses/[id] error', error);
+    return ApiResponse.internalError('Failed to update expense');
   }
 }

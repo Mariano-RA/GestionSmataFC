@@ -10,21 +10,88 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Team {
+  id            Int       @id @default(autoincrement())
+  name          String
+  description   String?
+  active        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  participants  Participant[]
+  payments      Payment[]
+  expenses      Expense[]
+  configs       Config[]
+  monthlyConfigs MonthlyConfig[]
+  userTeams     UserTeam[]
+  auditLogs     AuditLog[]
+}
+
+model User {
+  id            Int       @id @default(autoincrement())
+  email         String    @unique
+  name          String
+  passwordHash  String
+  globalRole    String    @default("user") // super_admin, admin, user
+  active        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  userTeams     UserTeam[]
+  auditLogs     AuditLog[]
+}
+
+model UserTeam {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  teamId    Int
+  role      String   @default("admin") // admin, viewer
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, teamId])
+}
+
+model AuditLog {
+  id          Int      @id @default(autoincrement())
+  teamId      Int?
+  userId      Int?
+  action      String   // CREATE, UPDATE, DELETE
+  entity      String   // Participant, Payment, Expense, Config, etc.
+  entityId    Int?
+  description String
+  metadata    String?  // JSON string with additional data
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+  team        Team?    @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([teamId, createdAt])
+  @@index([userId, createdAt])
+  @@index([entity, entityId])
+}
+
 model Participant {
   id        Int     @id @default(autoincrement())
+  teamId    Int
   name      String
   phone     String?
   notes     String?
   active    Boolean @default(true)
   joinDate  DateTime @default(now())
+  team      Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
   payments  Payment[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([teamId])
 }
 
 model Payment {
   id            Int       @id @default(autoincrement())
+  teamId        Int
   participantId Int
+  team          Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
   participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
   date          String    // YYYY-MM-DD
   amount        Int
@@ -33,32 +100,49 @@ model Payment {
   recordedAt    DateTime  @default(now())
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+
+  @@index([teamId])
+  @@index([participantId])
 }
 
 model Expense {
   id        Int       @id @default(autoincrement())
+  teamId    Int
   name      String
   amount    Int
   date      String    // YYYY-MM-DD
   category  String    @default("Otros") // Alquiler, Arbitraje, Equipamiento, Otros
+  team      Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
   recordedAt DateTime  @default(now())
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+
+  @@index([teamId])
 }
 
 model Config {
   id                Int     @id @default(autoincrement())
-  key               String  @unique
+  teamId            Int
+  key               String
   value             String
+  team              Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+
+  @@unique([teamId, key])
+  @@index([teamId])
 }
 
 model MonthlyConfig {
   id        Int      @id @default(autoincrement())
-  month    String   @unique // YYYY-MM
+  teamId    Int
+  month    String   // YYYY-MM
   monthlyTarget Int
   rent     Int
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@unique([teamId, month])
+  @@index([teamId])
 }

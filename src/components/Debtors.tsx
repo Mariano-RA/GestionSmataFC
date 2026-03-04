@@ -85,17 +85,8 @@ export default function Debtors({
       <div id="debtorsList">
         {participants.length > 0 && (
           <button
-            style={{
-              marginBottom: '12px',
-              padding: '8px 12px',
-              background: '#FFD700',
-              color: '#000',
-              border: 'none',
-              borderRadius: '5px',
-              cursor: 'pointer',
-              fontWeight: '500',
-              width: '100%'
-            }}
+            className="btn btn-warning"
+            style={{ width: '100%', marginBottom: '12px', background: '#FFD700', color: '#000' }}
             onClick={() => {
               const msg =
                 '📋 Estado de cuentas (' + currentMonth + '):\n' +
@@ -112,7 +103,7 @@ export default function Debtors({
               addToast('Mensaje copiado al portapapeles', 'success');
             }}
           >
-            📋 Copiar estado para WhatsApp
+            📋 Copiar Estado para WhatsApp
           </button>
         )}
         {filtered.length === 0 ? (

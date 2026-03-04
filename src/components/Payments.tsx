@@ -57,11 +57,16 @@ export default function Payments({
     setEditingId(null);
   };
 
-  const handleAdd = () => {
-    if (participantId && date && amount) {
-      onAdd(Number(participantId), date, Number(amount), method, note);
+  const handleAdd = async () => {
+    if (!participantId || !date || !amount) {
+      addToast('Por favor completa todos los campos requeridos', 'error');
+      return;
+    }
+    try {
+      await onAdd(Number(participantId), date, Number(amount), method, note);
       closeModal();
-      addToast('Pago registrado', 'success');
+    } catch (error) {
+      console.error('Error in handleAdd:', error);
     }
   };
 
@@ -99,7 +104,7 @@ export default function Payments({
           </button>
         </div>
         <button className="btn btn-primary" onClick={openAdd}>
-          + Agregar pago
+          ➕ Registrar Pago
         </button>
       </div>
 
@@ -129,19 +134,18 @@ export default function Payments({
                   </span>
                 </div>
                 {p.note && <p style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>{p.note}</p>}
-                <div className="card-actions">
+                <div className="card-actions btn-group">
                   <button
-                    className="btn btn-secondary"
+                    className="btn btn-secondary btn-sm"
                     onClick={() => openEdit(p)}
-                    style={{ width: 'auto', padding: '6px 12px', fontSize: '12px' }}
                   >
-                    Editar
+                    ✏️ Editar
                   </button>
                   <button
-                    className="btn btn-danger"
+                    className="btn btn-danger btn-sm"
                     onClick={() => onDelete(p.id)}
                   >
-                    Eliminar
+                    🗑️ Eliminar
                   </button>
                 </div>
               </div>
@@ -204,7 +208,7 @@ export default function Payments({
             />
           </div>
           <button className="btn btn-success" onClick={editingId === null ? handleAdd : handleSave}>
-            {editingId === null ? 'Registrar Pago' : 'Guardar cambios'}
+            {editingId === null ? '✅ Registrar Pago' : '💾 Guardar Cambios'}
           </button>
         </div>
       </div>

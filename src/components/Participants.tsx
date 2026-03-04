@@ -48,22 +48,34 @@ export default function Participants({
     setEditingId(null);
   };
 
-  const handleAdd = () => {
-    if (newName.trim()) {
-      onAdd(normalizeName(newName), newPhone, newNotes);
+  const handleAdd = async () => {
+    if (!newName.trim()) {
+      return;
+    }
+    try {
+      await onAdd(normalizeName(newName), newPhone, newNotes);
+      closeModal();
       setNewName('');
       setNewPhone('');
       setNewNotes('');
+    } catch (error) {
+      console.error('Error in handleAdd:', error);
     }
   };
 
-  const handleSave = () => {
-    if (editingId !== null && newName.trim()) {
-      onUpdate(editingId, normalizeName(newName), newPhone, newNotes);
+  const handleSave = async () => {
+    if (editingId === null || !newName.trim()) {
+      return;
+    }
+    try {
+      await onUpdate(editingId, normalizeName(newName), newPhone, newNotes);
+      closeModal();
       setEditingId(null);
       setNewName('');
       setNewPhone('');
       setNewNotes('');
+    } catch (error) {
+      console.error('Error in handleSave:', error);
     }
   };
 
@@ -111,7 +123,7 @@ export default function Participants({
           </button>
         </div>
         <button className="btn btn-primary" onClick={openAdd}>
-          + Agregar participante
+          ➕ Agregar Participante
         </button>
       </div>
 
@@ -140,33 +152,30 @@ export default function Participants({
               <p style={{ fontSize: '13px', color: '#666', marginBottom: '8px' }}>
                 Pagado: ${paid.toLocaleString('es-AR')} / Requerido: ${monthlyShare.toLocaleString('es-AR')}
               </p>
-              <div className="card-actions">
+              <div className="card-actions btn-group">
                 <button
-                  className="btn btn-secondary"
+                  className="btn btn-secondary btn-sm"
                   onClick={() => startEdit(p)}
-                  style={{ width: 'auto', padding: '6px 12px', fontSize: '12px' }}
                 >
-                  Editar
+                  ✏️ Editar
                 </button>
                 <button
-                  className="btn btn-secondary"
+                  className="btn btn-secondary btn-sm"
                   onClick={() => onShowHistory(p.id, p.name)}
-                  style={{ width: 'auto', padding: '6px 12px', fontSize: '12px' }}
                 >
-                  Ver Historial
+                  📋 Historial
                 </button>
                 <button
-                  className={`btn btn-secondary`}
+                  className={`btn btn-secondary btn-sm`}
                   onClick={() => onToggle(p.id)}
-                  style={{ width: 'auto', padding: '6px 12px', fontSize: '12px' }}
                 >
-                  {p.active ? 'Desactivar' : 'Activar'}
+                  {p.active ? '❌ Desactivar' : '✅ Activar'}
                 </button>
                 <button
-                  className="btn btn-danger"
+                  className="btn btn-danger btn-sm"
                   onClick={() => onRemove(p.id)}
                 >
-                  Eliminar
+                  🗑️ Eliminar
                 </button>
               </div>
             </div>
@@ -202,8 +211,8 @@ export default function Participants({
               onChange={e => setNewNotes(e.target.value)}
             />
           </div>
-          <button className="btn btn-success" onClick={handleSave}>
-            {editingId === null ? 'Agregar' : 'Guardar cambios'}
+          <button className="btn btn-success" onClick={editingId === null ? handleAdd : handleSave}>
+            {editingId === null ? '✅ Agregar' : '💾 Guardar Cambios'}
           </button>
         </div>
       </div>

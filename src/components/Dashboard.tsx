@@ -49,13 +49,13 @@ export default function Dashboard({
     <div className="tab-content active">
       {/* Month Navigation */}
       <div className="month-nav" style={{ textAlign: 'center', marginBottom: '10px' }}>
-        <button className="btn-secondary" style={{ width: 'auto', padding: '6px 12px' }} onClick={() => onMonthChange(-1)}>
+        <button className="btn-secondary btn-sm" onClick={() => onMonthChange(-1)}>
           ◀
         </button>
         <span id="dashMonth" style={{ margin: '0 12px', fontWeight: '600' }}>
           {getMonthName(currentMonth)}
         </span>
-        <button className="btn-secondary" style={{ width: 'auto', padding: '6px 12px' }} onClick={() => onMonthChange(1)}>
+        <button className="btn-secondary btn-sm" onClick={() => onMonthChange(1)}>
           ▶
         </button>
       </div>

@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { addMonths, getMonthName } from '@/lib/utils';
 import type { AppConfig } from '@/types';
+import { useUser } from '@/context/UserContext';
+import { logger } from '@/lib/logger';
 
 interface SettingsProps {
   config: AppConfig;
@@ -23,11 +25,20 @@ export default function Settings({
   onImport,
   addToast
 }: SettingsProps) {
+  const { currentTeamId } = useUser();
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [monthly, setMonthly] = useState((config?.monthlyTarget || 0).toString());
   const [rental, setRental] = useState((config?.fieldRental || 0).toString());
   const [maxPart, setMaxPart] = useState((config?.maxParticipants || 25).toString());
   const [notes, setNotes] = useState(config?.notes || '');
+
+  const getAuthHeaders = () => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+    return {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+  };
 
   // Generar lista de últimos 12 meses + próximos 3 meses
   const generateMonths = () => {
@@ -43,17 +54,28 @@ export default function Settings({
   // Cargar configuración del mes seleccionado
   const loadMonthConfig = async (month: string) => {
     try {
-      const res = await fetch(`/api/config?month=${month}`);
+      if (!currentTeamId) {
+        return;
+      }
+
+      const res = await fetch(`/api/config?month=${month}&teamId=${currentTeamId}`, {
+        method: 'GET',
+        headers: getAuthHeaders(),
+        credentials: 'include',
+      });
+
       if (res.ok) {
-        const monthlyConfig = await res.json();
+        const raw = await res.json();
+        const monthlyConfig = raw?.data ?? raw;
+
         const fieldRentalValue = monthlyConfig.rent !== undefined ? monthlyConfig.rent : monthlyConfig.fieldRental;
-        setMonthly((monthlyConfig.monthlyTarget || 0).toString());
+        setMonthly((Number(monthlyConfig.monthlyTarget) || 0).toString());
         setRental((fieldRentalValue || 0).toString());
-        setMaxPart((monthlyConfig.maxParticipants || 25).toString());
+        setMaxPart((Number(monthlyConfig.maxParticipants) || 25).toString());
         setNotes(monthlyConfig.notes || '');
       }
     } catch (error) {
-      console.log('Error loading month config:', error);
+      logger.error('Error loading month config:', error);
     }
   };
 
@@ -73,6 +95,11 @@ export default function Settings({
   }, [currentMonth, config]);
 
   const handleSave = async () => {
+    if (!currentTeamId) {
+      addToast('Seleccioná un equipo antes de guardar configuración', 'error');
+      return;
+    }
+
     const newConfig = {
       monthlyTarget: Number(monthly),
       fieldRental: Number(rental),
@@ -80,29 +107,50 @@ export default function Settings({
       notes
     };
 
+    if (
+      Number.isNaN(newConfig.monthlyTarget) ||
+      Number.isNaN(newConfig.fieldRental) ||
+      Number.isNaN(newConfig.maxParticipants)
+    ) {
+      addToast('Completá valores numéricos válidos antes de guardar', 'error');
+      return;
+    }
+
     try {
       // Guardar configuración global
-      await fetch('/api/config', {
+      const globalRes = await fetch(`/api/config?teamId=${currentTeamId}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
+        credentials: 'include',
         body: JSON.stringify(newConfig)
       });
 
+      if (!globalRes.ok) {
+        const err = await globalRes.json().catch(() => ({}));
+        throw new Error(err?.error || 'No se pudo guardar la configuración global');
+      }
+
       // Guardar configuración mensual para el mes seleccionado
-      await fetch(`/api/config?month=${selectedMonth}`, {
+      const monthRes = await fetch(`/api/config?month=${selectedMonth}&teamId=${currentTeamId}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
+        credentials: 'include',
         body: JSON.stringify({
           monthlyTarget: Number(monthly),
           rent: Number(rental)
         })
       });
 
+      if (!monthRes.ok) {
+        const err = await monthRes.json().catch(() => ({}));
+        throw new Error(err?.error || 'No se pudo guardar la configuración mensual');
+      }
+
       onSave(newConfig);
       addToast(`Configuración guardada para ${getMonthName(selectedMonth)}`, 'success');
     } catch (error) {
-      console.error('Error saving config:', error);
-      addToast('Error al guardar configuración', 'error');
+      logger.error('Error saving config:', error);
+      addToast(error instanceof Error ? error.message : 'Error al guardar configuración', 'error');
     }
   };
 
@@ -166,10 +214,10 @@ export default function Settings({
       </div>
 
       <button className="btn btn-success" onClick={handleSave}>
-        Guardar Config
+        💾 Guardar Configuración
       </button>
       <button className="btn btn-secondary" onClick={onReset} style={{ marginTop: '10px' }}>
-        Restaurar
+        🔄 Restaurar
       </button>
 
       <hr style={{ margin: '20px 0', borderColor: 'var(--border)' }} />

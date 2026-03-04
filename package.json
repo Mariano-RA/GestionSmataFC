@@ -9,15 +9,22 @@
     "lint": "eslint .",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
-    "db:seed": "node prisma/seed.js"
+    "db:seed": "node prisma/seed.js",
+    "db:migrate-teams": "node prisma/migrate-to-teams.js"
   },
   "dependencies": {
     "@prisma/client": "^5.0.0",
+    "@types/jsonwebtoken": "^9.0.10",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.3",
     "next": "latest",
     "react": "latest",
-    "react-dom": "latest"
+    "react-dom": "latest",
+    "react-hot-toast": "^2.6.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "25.3.2",
     "@types/react": "19.2.14",
     "eslint": "latest",

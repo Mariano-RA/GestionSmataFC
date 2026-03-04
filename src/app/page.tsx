@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useUser } from '@/context/UserContext';
+import { logger } from '@/lib/logger';
 import Header from '@/components/Header';
 import Nav from '@/components/Nav';
 import Toast, { type ToastMessage } from '@/components/Toast';
@@ -16,6 +18,7 @@ import { getCurrentMonth, addMonths, DEFAULT_CONFIG } from '@/lib/utils';
 import type { Participant, Payment, Expense, AppConfig, MonthlyConfig } from '@/types';
 
 export default function Home() {
+  const { user, currentTeamId, loading, isAuthenticated } = useUser();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [currentMonth, setCurrentMonth] = useState(getCurrentMonth());
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -24,7 +27,7 @@ export default function Home() {
   const [config, setConfig] = useState<AppConfig>(DEFAULT_CONFIG);
   const [globalConfig, setGlobalConfig] = useState<AppConfig>(DEFAULT_CONFIG);
   const [monthlyConfigs, setMonthlyConfigs] = useState<MonthlyConfig[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(true);
   const [historyModal, setHistoryModal] = useState({ open: false, id: 0, name: '' });
   const [toastMessages, setToastMessages] = useState<ToastMessage[]>([]);
 
@@ -40,34 +43,148 @@ export default function Home() {
     setToastMessages(prev => prev.filter(m => m.id !== id));
   };
 
+  // Helper para refrescar el token cuando expire
+  const refreshAccessToken = async () => {
+    try {
+      const res = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // Incluir cookies con refresh token
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        // Manejar ambos formatos: { accessToken } y { data: { accessToken } }
+        const newAccessToken = data.data?.accessToken || data.accessToken;
+        if (newAccessToken) {
+          localStorage.setItem('accessToken', newAccessToken);
+          logger.log('Token refreshed successfully');
+          return newAccessToken;
+        }
+      }
+      logger.warn('Failed to refresh token:', res.status);
+      return null;
+    } catch (error) {
+      logger.error('Error refreshing token:', error);
+      return null;
+    }
+  };
+
+  // Helper para hacer requests con JWT token y teamId
+  const apiRequest = async (endpoint: string, options: RequestInit = {}): Promise<Response> => {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(typeof options.headers === 'object' && options.headers !== null 
+        ? Object.fromEntries(Object.entries(options.headers).map(([k, v]) => [k, String(v)])) 
+        : {}),
+    };
+
+    // Incluir JWT token en Authorization header
+    let token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+      logger.log('Token included in request:', { hasToken: !!token, tokenLength: token.length });
+    } else {
+      logger.warn('No token found in localStorage');
+    }
+
+    // Agregar teamId a la URL si existe
+    let url = endpoint;
+    if (currentTeamId && !endpoint.includes('?')) {
+      url = `${endpoint}?teamId=${currentTeamId}`;
+    } else if (currentTeamId && endpoint.includes('?')) {
+      url = `${endpoint}&teamId=${currentTeamId}`;
+    }
+
+    // Agregar teamId al body si es POST/PATCH
+    let body = options.body;
+    if (body && typeof body === 'string' && currentTeamId) {
+      const data = JSON.parse(body);
+      if (!data.teamId) {
+        data.teamId = currentTeamId;
+      }
+      body = JSON.stringify(data);
+    }
+
+    logger.log('Making request:', { url, method: options.method || 'GET', hasAuth: !!token });
+
+    let response = await fetch(url, {
+      ...options,
+      headers,
+      body,
+      credentials: 'include', // Incluir cookies para refresh token
+    });
+
+    logger.log('Response status:', { url, status: response.status });
+
+    // Si obtenemos 401, intentar refrescar el token y reintentar una vez
+    if (response.status === 401 && !options.body?.toString().includes('refresh')) {
+      logger.warn('Token expired (401), attempting to refresh...');
+      const newToken = await refreshAccessToken();
+      
+      if (newToken) {
+        headers['Authorization'] = `Bearer ${newToken}`;
+        logger.log('Retrying request with new token');
+        response = await fetch(url, {
+          ...options,
+          headers,
+          body,
+          credentials: 'include',
+        });
+      } else {
+        // Si no podemos refrescar, redirigir a login
+        logger.error('Could not refresh token, redirecting to login');
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('userId');
+        if (typeof window !== 'undefined') {
+          window.location.href = '/login';
+        }
+      }
+    }
+
+    return response;
+  };
+
   // Load data on mount
   useEffect(() => {
-    loadAllData();
-  }, []);
+    logger.log('useEffect triggered:', { currentTeamId, isAuthenticated, loading });
+    if (currentTeamId && isAuthenticated && !loading) {
+      logger.log('Calling loadAllData with currentTeamId:', currentTeamId);
+      loadAllData();
+    }
+  }, [currentTeamId, isAuthenticated, loading, user?.id]);
 
   // Load monthly config when month changes
   useEffect(() => {
-    loadMonthlyConfig();
-    loadMonthlyConfigs();
-  }, [currentMonth, globalConfig]);
+    if (currentTeamId) {
+      loadMonthlyConfig();
+      loadMonthlyConfigs();
+    }
+  }, [currentMonth, globalConfig, currentTeamId, user?.id]);
 
   const loadMonthlyConfigs = async () => {
     try {
-      const res = await fetch('/api/config?allMonths=true');
+      const res = await apiRequest('/api/config?allMonths=true');
       if (res.ok) {
-        const data = await res.json();
+        const response = await res.json();
+        // Extraer los datos del envoltorio ApiResponse
+        const data = response.data || response;
         setMonthlyConfigs(Array.isArray(data) ? data : []);
       }
     } catch (error) {
-      console.log('Using global config history fallback');
+      logger.log('Using global config history fallback');
     }
   };
 
   const loadMonthlyConfig = async () => {
     try {
-      const res = await fetch(`/api/config?month=${currentMonth}`);
+      const res = await apiRequest(`/api/config?month=${currentMonth}`);
       if (res.ok) {
-        const monthlyConfig = await res.json();
+        const response = await res.json();
+        // Extraer los datos del envoltorio ApiResponse
+        const monthlyConfig = response.data || response;
         // Normalizar la respuesta: MonthlyConfig tiene 'rent', AppConfig tiene 'fieldRental'
         const fieldRentalValue = monthlyConfig.rent !== undefined ? monthlyConfig.rent : monthlyConfig.fieldRental;
         setConfig({
@@ -79,19 +196,30 @@ export default function Home() {
         setConfig(globalConfig);
       }
     } catch (error) {
-      console.log('Using global config for month:', currentMonth);
+      logger.log('Using global config for month:', currentMonth);
       setConfig(globalConfig);
     }
   };
 
   const loadAllData = async () => {
     try {
+      if (!currentTeamId) {
+        logger.warn('loadAllData called without currentTeamId');
+        setDataLoading(false);
+        return;
+      }
+
       const [partsRes, paysRes, expRes, cfgRes] = await Promise.all([
-        fetch('/api/participants'),
-        fetch('/api/payments'),
-        fetch('/api/expenses'),
-        fetch('/api/config'),
+        apiRequest('/api/participants'),
+        apiRequest('/api/payments'),
+        apiRequest('/api/expenses'),
+        apiRequest('/api/config'),
       ]);
+
+      // Verificar si hay error 401 (token inválido/expirado)
+      if (partsRes.status === 401 || paysRes.status === 401 || expRes.status === 401 || cfgRes.status === 401) {
+        throw new Error('Token inválido o expirado');
+      }
 
       const parts = await partsRes.json();
       const pays = await paysRes.json();
@@ -99,24 +227,29 @@ export default function Home() {
       const cfg = await cfgRes.json();
 
       if (partsRes.status !== 200) {
+        logger.error('Failed to load participants:', parts);
         throw new Error(parts.error || 'Failed to load participants');
       }
       if (paysRes.status !== 200) {
+        logger.error('Failed to load payments:', pays);
         throw new Error(pays.error || 'Failed to load payments');
       }
       if (expRes.status !== 200) {
+        logger.error('Failed to load expenses:', exps);
         throw new Error(exps.error || 'Failed to load expenses');
       }
 
-      setParticipants(Array.isArray(parts) ? parts : []);
-      setPayments(Array.isArray(pays) ? pays : []);
-      setExpenses(Array.isArray(exps) ? exps : []);
-      setConfig(cfg || DEFAULT_CONFIG);
-      setGlobalConfig(cfg || DEFAULT_CONFIG);
-      setLoading(false);
+      // Los endpoints devuelven { success, data, ... }, así que extraer el .data
+      setParticipants(Array.isArray(parts.data) ? parts.data : []);
+      setPayments(Array.isArray(pays.data) ? pays.data : []);
+      setExpenses(Array.isArray(exps.data) ? exps.data : []);
+      setConfig(cfg.data || DEFAULT_CONFIG);
+      setGlobalConfig(cfg.data || DEFAULT_CONFIG);
+      setDataLoading(false);
     } catch (error) {
-      console.error('Error loading data:', error);
-      setLoading(false);
+      logger.error('Error loading data:', error);
+      addToast('Error cargando datos: ' + (error instanceof Error ? error.message : 'Error desconocido'), 'error');
+      setDataLoading(false);
     }
   };
 
@@ -126,43 +259,62 @@ export default function Home() {
 
   const handleAddParticipant = async (name: string, phone: string, notes: string) => {
     try {
-      const res = await fetch('/api/participants', {
+      const res = await apiRequest('/api/participants', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, phone, notes }),
       });
       if (res.ok) {
+        addToast('Participante agregado', 'success');
         await loadAllData();
+        return;
+      } else {
+        const error = await res.json();
+        const errorMsg = error.message || 'Error agregando participante';
+        addToast(errorMsg, 'error');
+        throw new Error(errorMsg);
       }
     } catch (error) {
-      console.error('Error adding participant:', error);
+      logger.error('Error adding participant:', error);
+      if ((error as Error).message !== 'Error agregando participante') {
+        addToast('Error agregando participante', 'error');
+      }
+      throw error;
     }
   };
 
   const handleRemoveParticipant = async (id: number) => {
     if (!confirm('¿Eliminar?')) return;
     try {
-      const res = await fetch(`/api/participants/${id}`, { method: 'DELETE' });
+      const res = await apiRequest(`/api/participants/${id}`, { method: 'DELETE' });
       if (res.ok) {
+        addToast('Participante eliminado', 'success');
         await loadAllData();
+      } else {
+        const error = await res.json();
+        addToast(error.message || 'Error eliminando participante', 'error');
       }
     } catch (error) {
-      console.error('Error removing participant:', error);
+      logger.error('Error removing participant:', error);
+      addToast('Error eliminando participante', 'error');
     }
   };
 
   const handleUpdateParticipant = async (id: number, name: string, phone: string, notes: string) => {
     try {
-      const res = await fetch(`/api/participants/${id}`, {
+      const res = await apiRequest(`/api/participants/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, phone, notes })
       });
       if (res.ok) {
+        addToast('Participante actualizado', 'success');
         await loadAllData();
+      } else {
+        const error = await res.json();
+        addToast(error.message || 'Error actualizando participante', 'error');
       }
     } catch (error) {
-      console.error('Error updating participant:', error);
+      logger.error('Error updating participant:', error);
+      addToast('Error actualizando participante', 'error');
     }
   };
 
@@ -170,116 +322,161 @@ export default function Home() {
     try {
       const p = participants.find(x => x.id === id);
       if (p) {
-        const res = await fetch(`/api/participants/${id}`, {
+        const res = await apiRequest(`/api/participants/${id}`, {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ active: !p.active }),
         });
         if (res.ok) {
           await loadAllData();
+        } else {
+          const error = await res.json();
+          addToast(error.message || 'Error actualizando participante', 'error');
         }
       }
     } catch (error) {
-      console.error('Error toggling participant:', error);
+      logger.error('Error toggling participant:', error);
+      addToast('Error actualizando participante', 'error');
     }
   };
 
   const handleAddPayment = async (participantId: number, date: string, amount: number, method: string, note: string) => {
     try {
-      const res = await fetch('/api/payments', {
+      const res = await apiRequest('/api/payments', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ participantId, date, amount, method, note }),
       });
       if (res.ok) {
+        addToast('Pago registrado', 'success');
         await loadAllData();
+        return;
+      } else {
+        const error = await res.json();
+        const errorMsg = error.message || 'Error registrando pago';
+        addToast(errorMsg, 'error');
+        throw new Error(errorMsg);
       }
     } catch (error) {
-      console.error('Error adding payment:', error);
+      logger.error('Error adding payment:', error);
+      if ((error as Error).message !== 'Error registrando pago') {
+        addToast('Error registrando pago', 'error');
+      }
+      throw error;
     }
   };
 
   const handleDeletePayment = async (id: number) => {
     if (!confirm('¿Eliminar?')) return;
     try {
-      const res = await fetch(`/api/payments/${id}`, { method: 'DELETE' });
+      const res = await apiRequest(`/api/payments/${id}`, { method: 'DELETE' });
       if (res.ok) {
+        addToast('Pago eliminado', 'success');
         await loadAllData();
+      } else {
+        const error = await res.json();
+        addToast(error.message || 'Error eliminando pago', 'error');
       }
     } catch (error) {
-      console.error('Error deleting payment:', error);
+      logger.error('Error deleting payment:', error);
+      addToast('Error eliminando pago', 'error');
     }
   };
 
   const handleUpdatePayment = async (id: number, participantId: number, date: string, amount: number, method: string, note: string) => {
     try {
-      const res = await fetch(`/api/payments/${id}`, {
+      const res = await apiRequest(`/api/payments/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ participantId, date, amount, method, note })
       });
       if (res.ok) {
+        addToast('Pago actualizado', 'success');
         await loadAllData();
+      } else {
+        const error = await res.json();
+        addToast(error.message || 'Error actualizando pago', 'error');
       }
     } catch (error) {
-      console.error('Error updating payment:', error);
+      logger.error('Error updating payment:', error);
+      addToast('Error actualizando pago', 'error');
     }
   };
 
   const handleAddExpense = async (name: string, amount: number, date: string, category: string) => {
     try {
-      const res = await fetch('/api/expenses', {
+      const res = await apiRequest('/api/expenses', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, amount, date, category }),
       });
       if (res.ok) {
+        addToast('Gasto registrado', 'success');
         await loadAllData();
+        return;
+      } else {
+        const error = await res.json();
+        const errorMsg = error.message || 'Error registrando gasto';
+        addToast(errorMsg, 'error');
+        throw new Error(errorMsg);
       }
     } catch (error) {
-      console.error('Error adding expense:', error);
+      logger.error('Error adding expense:', error);
+      if ((error as Error).message !== 'Error registrando gasto') {
+        addToast('Error registrando gasto', 'error');
+      }
+      throw error;
     }
   };
 
   const handleUpdateExpense = async (id: number, name: string, amount: number, date: string, category: string) => {
     try {
-      const res = await fetch(`/api/expenses/${id}`, {
+      const res = await apiRequest(`/api/expenses/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, amount, date, category })
       });
       if (res.ok) {
+        addToast('Gasto actualizado', 'success');
         await loadAllData();
+      } else {
+        const error = await res.json();
+        addToast(error.message || 'Error actualizando gasto', 'error');
       }
     } catch (error) {
-      console.error('Error updating expense:', error);
+      logger.error('Error updating expense:', error);
+      addToast('Error actualizando gasto', 'error');
     }
   };
 
   const handleDeleteExpense = async (id: number) => {
     if (!confirm('¿Eliminar?')) return;
     try {
-      const res = await fetch(`/api/expenses/${id}`, { method: 'DELETE' });
+      const res = await apiRequest(`/api/expenses/${id}`, { method: 'DELETE' });
       if (res.ok) {
+        addToast('Gasto eliminado', 'success');
         await loadAllData();
+      } else {
+        const error = await res.json();
+        addToast(error.message || 'Error eliminando gasto', 'error');
       }
     } catch (error) {
-      console.error('Error deleting expense:', error);
+      logger.error('Error deleting expense:', error);
+      addToast('Error eliminando gasto', 'error');
     }
   };
 
   const handleSaveConfig = async (newConfig: AppConfig) => {
     try {
-      const res = await fetch('/api/config', {
+      const res = await apiRequest('/api/config', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newConfig),
       });
       if (res.ok) {
+        addToast('Configuración guardada', 'success');
         await loadAllData();
+      } else {
+        const error = await res.json();
+        addToast(error.message || 'Error guardando configuración', 'error');
       }
     } catch (error) {
-      console.error('Error saving config:', error);
+      logger.error('Error saving config:', error);
+      addToast('Error guardando configuración', 'error');
     }
   };
 
@@ -320,8 +517,12 @@ export default function Home() {
     }
   };
 
-  if (loading) {
-    return <div style={{ padding: '20px', textAlign: 'center' }}>Cargando...</div>;
+  if (!user || !currentTeamId || !isAuthenticated) {
+    return <div style={{ padding: '20px', textAlign: 'center' }}>Cargando usuario y equipo...</div>;
+  }
+
+  if (dataLoading) {
+    return <div style={{ padding: '20px', textAlign: 'center' }}>Cargando datos...</div>;
   }
 
   const allMonths = Array.from(

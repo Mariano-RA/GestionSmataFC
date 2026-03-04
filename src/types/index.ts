@@ -1,5 +1,50 @@
+export interface Team {
+  id: number;
+  name: string;
+  description?: string;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface User {
+  id: number;
+  email: string;
+  name: string;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UserTeam {
+  id: number;
+  userId: number;
+  teamId: number;
+  role: string;
+  user?: User;
+  team?: Team;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AuditLog {
+  id: number;
+  teamId?: number;
+  userId?: number;
+  action: string;
+  entity: string;
+  entityId?: number;
+  description: string;
+  metadata?: string;
+  ipAddress?: string;
+  createdAt: string;
+  user?: User;
+  team?: Team;
+}
+
 export interface Participant {
   id: number;
+  teamId: number;
   name: string;
   phone?: string;
   notes?: string;
@@ -10,6 +55,7 @@ export interface Participant {
 
 export interface Payment {
   id: number;
+  teamId: number;
   participantId: number;
   date: string;
   amount: number;
@@ -20,6 +66,7 @@ export interface Payment {
 
 export interface Expense {
   id: number;
+  teamId: number;
   name: string;
   amount: number;
   date: string;
@@ -35,6 +82,7 @@ export interface AppConfig {
 }
 
 export interface MonthlyConfig {
+  teamId: number;
   month: string;
   monthlyTarget: number;
   rent: number;

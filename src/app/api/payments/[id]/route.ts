@@ -2,6 +2,10 @@ export const runtime = 'nodejs';
 
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
+import { validateProtectedTeamRoute, getClientIp } from '@/lib/auth';
+import { updatePaymentSchema } from '@/lib/schemas';
+import { ApiResponse } from '@/lib/api-response';
+import { logger } from '@/lib/logger';
 
 // DELETE payment
 export async function DELETE(
@@ -10,13 +14,45 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+    
+    const payment = await db.payment.findUnique({
+      where: { id: Number(id) }
+    });
+
+    if (!payment) {
+      return ApiResponse.notFound('Payment not found');
+    }
+
+    // Validar acceso al equipo
+    const auth = await validateProtectedTeamRoute(request, db, payment.teamId);
+    if (!auth.authorized) {
+      return ApiResponse.unauthorized(auth.error);
+    }
+
+    const userId = auth.userId;
+
+    // Crear log antes de eliminar
+    await db.auditLog.create({
+      data: {
+        teamId: payment.teamId,
+        userId: userId || null,
+        action: 'DELETE',
+        entity: 'Payment',
+        entityId: payment.id,
+        description: `Pago eliminado: $${payment.amount}`,
+        metadata: JSON.stringify(payment),
+        ipAddress: getClientIp(request) || null,
+      },
+    });
+
     await db.payment.delete({
       where: { id: Number(id) }
     });
 
-    return NextResponse.json({ success: true });
-  } catch (error) {    console.error('GET /api/payments/[id] error', error);    console.error('DELETE /api/payments/[id] error', error);
-    return NextResponse.json({ error: 'Failed to delete payment' }, { status: 500 });
+    return ApiResponse.ok({ success: true });
+  } catch (error) {
+    logger.error('DELETE /api/payments/[id] error', error);
+    return ApiResponse.internalError('Failed to delete payment');
   }
 }
 
@@ -27,8 +63,29 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    const data = await request.json();
-    const { participantId, date, amount, method, note } = data;
+    const body = await request.json();
+    const validation = updatePaymentSchema.safeParse(body);
+    if (!validation.success) {
+      return ApiResponse.fromZodError(validation.error);
+    }
+
+    const { participantId, date, amount, method, note } = validation.data;
+
+    const currentPayment = await db.payment.findUnique({
+      where: { id: Number(id) }
+    });
+
+    if (!currentPayment) {
+      return ApiResponse.notFound('Payment not found');
+    }
+
+    // Validar acceso al equipo
+    const auth = await validateProtectedTeamRoute(request, db, currentPayment.teamId);
+    if (!auth.authorized) {
+      return ApiResponse.unauthorized(auth.error);
+    }
+
+    const userId = auth.userId;
 
     const payment = await db.payment.update({
       where: { id: Number(id) },
@@ -41,9 +98,23 @@ export async function PATCH(
       }
     });
 
-    return NextResponse.json(payment);
+    // Crear log de auditoría
+    await db.auditLog.create({
+      data: {
+        teamId: payment.teamId,
+        userId: userId || null,
+        action: 'UPDATE',
+        entity: 'Payment',
+        entityId: payment.id,
+        description: `Pago actualizado: $${payment.amount}`,
+        metadata: JSON.stringify({ before: currentPayment, after: payment }),
+        ipAddress: getClientIp(request) || null,
+      },
+    });
+
+    return ApiResponse.ok(payment);
   } catch (error) {
-    console.error('PATCH /api/payments/[id] error', error);
-    return NextResponse.json({ error: 'Failed to update payment' }, { status: 500 });
+    logger.error('PATCH /api/payments/[id] error', error);
+    return ApiResponse.internalError('Failed to update payment');
   }
 }

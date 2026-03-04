@@ -3,34 +3,56 @@ export const runtime = 'nodejs';
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { DEFAULT_CONFIG } from '@/lib/utils';
+import { validateProtectedTeamRoute, getClientIp } from '@/lib/auth';
+import { monthlyConfigSchema } from '@/lib/schemas';
+import { ApiResponse } from '@/lib/api-response';
+import { logger } from '@/lib/logger';
 
 // GET config
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
+    const teamId = parseInt(searchParams.get('teamId') || '0');
     const month = searchParams.get('month');
     const allMonths = searchParams.get('allMonths');
 
+    if (!teamId) {
+      return ApiResponse.badRequest('teamId is required');
+    }
+
+    // Validar autenticación y acceso al equipo
+    const auth = await validateProtectedTeamRoute(request, db, teamId);
+    if (!auth.authorized) {
+      return ApiResponse.unauthorized(auth.error);
+    }
+
+    const parsedTeamId = teamId;
+
     if (allMonths === 'true') {
       const monthlyConfigs = await db.monthlyConfig.findMany({
+        where: { teamId: parsedTeamId },
         orderBy: { month: 'asc' }
       });
-      return NextResponse.json(monthlyConfigs);
+      return ApiResponse.ok(monthlyConfigs);
     }
 
     // Si viene month, obtener configuración mensual
     if (month) {
-      const monthlyConfig = await db.monthlyConfig.findFirst({ where: { month } });
+      const monthlyConfig = await db.monthlyConfig.findFirst({ 
+        where: { teamId: parsedTeamId, month } 
+      });
       if (monthlyConfig) {
-        return NextResponse.json(monthlyConfig);
+        return ApiResponse.ok(monthlyConfig);
       }
       // Si no existe config para ese mes, devolver config global como fallback
     }
 
     // Si no, obtener configuración global
-    const configEntries = await db.config.findMany();
+    const configEntries = await db.config.findMany({
+      where: { teamId: parsedTeamId }
+    });
     if (configEntries.length === 0) {
-      return NextResponse.json(DEFAULT_CONFIG);
+      return ApiResponse.ok(DEFAULT_CONFIG);
     }
 
     const config: Record<string, any> = {};
@@ -42,10 +64,10 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    return NextResponse.json(config);
+    return ApiResponse.ok(config);
   } catch (error) {
-    console.error('GET /api/config error', error);
-    return NextResponse.json(DEFAULT_CONFIG);
+    logger.error('GET /api/config error', error);
+    return ApiResponse.ok(DEFAULT_CONFIG);
   }
 }
 
@@ -53,26 +75,59 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
+    const teamId = parseInt(searchParams.get('teamId') || '0');
     const month = searchParams.get('month');
     const configData = await request.json();
 
+    if (!teamId) {
+      return ApiResponse.badRequest('teamId is required');
+    }
+
+    // Validar autenticación y acceso al equipo
+    const auth = await validateProtectedTeamRoute(request, db, teamId);
+    if (!auth.authorized) {
+      return ApiResponse.unauthorized(auth.error);
+    }
+
+    const userId = auth.userId;
+    const parsedTeamId = teamId;
+
     // Si viene month, guardar configuración mensual
     if (month) {
-      const { monthlyTarget, rent } = configData;
-      if (!monthlyTarget || !rent) {
-        return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
+      const validation = monthlyConfigSchema.safeParse(configData);
+      if (!validation.success) {
+        return ApiResponse.fromZodError(validation.error);
       }
+      const { monthlyTarget, rent } = validation.data;
       const config = await db.monthlyConfig.upsert({
-        where: { month },
+        where: { teamId_month: { teamId: parsedTeamId, month } },
         update: { monthlyTarget, rent },
-        create: { month, monthlyTarget, rent },
+        create: { teamId: parsedTeamId, month, monthlyTarget, rent },
       });
-      return NextResponse.json(config, { status: 201 });
+
+      // Crear log de auditoría
+      await db.auditLog.create({
+        data: {
+          teamId: parsedTeamId,
+          userId: userId || null,
+          action: 'UPDATE',
+          entity: 'MonthlyConfig',
+          entityId: config.id,
+          description: `Configuración mensual actualizada: ${month}`,
+          metadata: JSON.stringify({ month, monthlyTarget, rent }),
+          ipAddress: getClientIp(request) || null,
+        },
+      });
+
+      return ApiResponse.created(config);
     }
 
     // Si no, guardar configuración global
-    await db.config.deleteMany({});
+    await db.config.deleteMany({
+      where: { teamId: parsedTeamId }
+    });
     const configEntries = Object.entries(configData).map(([key, value]) => ({
+      teamId: parsedTeamId,
       key,
       value: typeof value === 'string' ? value : JSON.stringify(value),
     }));
@@ -83,9 +138,22 @@ export async function POST(request: NextRequest) {
       )
     );
 
-    return NextResponse.json(configData, { status: 201 });
+    // Crear log de auditoría
+    await db.auditLog.create({
+      data: {
+        teamId: parsedTeamId,
+        userId: userId || null,
+        action: 'UPDATE',
+        entity: 'Config',
+        description: 'Configuración global actualizada',
+        metadata: JSON.stringify(configData),
+        ipAddress: getClientIp(request) || null,
+      },
+    });
+
+    return ApiResponse.created(configData);
   } catch (error) {
-    console.error('POST /api/config error', error);
-    return NextResponse.json({ error: 'Failed to save config' }, { status: 500 });
+    logger.error('POST /api/config error', error);
+    return ApiResponse.internalError('Failed to save config');
   }
 }

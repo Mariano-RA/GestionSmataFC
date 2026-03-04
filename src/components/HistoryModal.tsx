@@ -73,11 +73,10 @@ export default function HistoryModal({
                     ${p.amount.toLocaleString('es-AR')}
                   </p>
                   <button
-                    className="btn btn-danger"
+                    className="btn btn-danger btn-sm"
                     onClick={() => onDeletePayment(p.id)}
-                    style={{ padding: '2px 8px', fontSize: '11px' }}
                   >
-                    Eliminar
+                    🗑️ Eliminar
                   </button>
                 </div>
               </div>
