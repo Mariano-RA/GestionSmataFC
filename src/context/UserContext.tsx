@@ -91,7 +91,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         setIsAuthenticated(true);
 
         // Establecer equipo preferido, o el primer equipo si no hay preferido
-        if (userData.user.preferredTeamId && userData.teams.some(t => t.id === userData.user.preferredTeamId)) {
+        if (userData.user.preferredTeamId && userData.teams.some((t: any) => t.id === userData.user.preferredTeamId)) {
           setCurrentTeamId(userData.user.preferredTeamId);
         } else if (userData.teams && userData.teams.length > 0) {
           setCurrentTeamId(userData.teams[0].id);
