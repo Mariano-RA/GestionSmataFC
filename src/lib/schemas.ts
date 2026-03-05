@@ -137,13 +137,13 @@ export type UpdateConfigRequest = z.infer<typeof updateConfigSchema>;
 export const createUserTeamSchema = z.object({
   userId: z.number().int().positive('User ID requerido'),
   teamId: z.number().int().positive('Team ID requerido'),
-  role: z.enum(['admin', 'member']).optional().default('member'),
+  role: z.enum(['admin', 'viewer']).optional().default('admin'),
 });
 
 export type CreateUserTeamRequest = z.infer<typeof createUserTeamSchema>;
 
 export const updateUserTeamSchema = z.object({
-  role: z.enum(['admin', 'member']).optional(),
+  role: z.enum(['admin', 'viewer']),
 });
 
 export type UpdateUserTeamRequest = z.infer<typeof updateUserTeamSchema>;

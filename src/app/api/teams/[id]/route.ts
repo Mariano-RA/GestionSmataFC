@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db as prisma } from '@/lib/db';
 import { validateRequestAuth, getClientIp } from '@/lib/auth';
+import { updateTeamSchema } from '@/lib/schemas';
+import { ApiResponse } from '@/lib/api-response';
 
 // GET /api/teams/[id] - Obtener un equipo específico
 export async function GET(
@@ -90,7 +92,14 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { name, description, active } = body;
+    
+    // Validar con Zod
+    const validation = updateTeamSchema.safeParse(body);
+    if (!validation.success) {
+      return ApiResponse.fromZodError(validation.error);
+    }
+
+    const { name, description, active } = validation.data;
 
     const currentTeam = await prisma.team.findUnique({
       where: { id: teamId },

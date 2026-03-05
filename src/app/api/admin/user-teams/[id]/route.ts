@@ -1,6 +1,8 @@
 import { db as prisma } from '@/lib/db';
 import { validateRequestAuth, validateSuperAdmin } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
+import { updateUserTeamSchema } from '@/lib/schemas';
+import { ApiResponse } from '@/lib/api-response';
 
 /**
  * PATCH /api/admin/user-teams/[id]
@@ -32,11 +34,19 @@ export async function PATCH(
 
     const { id } = await params;
     const userTeamId = parseInt(id);
-    const { role } = await request.json();
+    const body = await request.json();
+    
+    // Validar con Zod
+    const validation = updateUserTeamSchema.safeParse(body);
+    if (!validation.success) {
+      return ApiResponse.fromZodError(validation.error);
+    }
 
-    if (!role || !['admin', 'viewer'].includes(role)) {
+    const { role } = validation.data;
+
+    if (!role) {
       return NextResponse.json(
-        { error: 'Rol inválido (admin o viewer)' },
+        { error: 'Rol requerido' },
         { status: 400 }
       );
     }

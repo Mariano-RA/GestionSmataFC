@@ -1,6 +1,8 @@
 import { db as prisma } from '@/lib/db';
 import { validateRequestAuth, validateSuperAdmin } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
+import { createUserTeamSchema } from '@/lib/schemas';
+import { ApiResponse } from '@/lib/api-response';
 
 /**
  * GET /api/admin/user-teams
@@ -91,13 +93,18 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const assignUserId = parseInt(body.userId);
-    const teamId = parseInt(body.teamId);
-    const role = body.role || 'admin';
+    
+    // Validar con Zod
+    const validation = createUserTeamSchema.safeParse(body);
+    if (!validation.success) {
+      return ApiResponse.fromZodError(validation.error);
+    }
 
-    if (!assignUserId || !teamId || isNaN(assignUserId) || isNaN(teamId)) {
+    const { userId: assignUserId, teamId, role } = validation.data;
+
+    if (!assignUserId || !teamId) {
       return NextResponse.json(
-        { error: 'userId y teamId requeridos (números válidos)' },
+        { error: 'userId y teamId requeridos' },
         { status: 400 }
       );
     }

@@ -5,28 +5,8 @@ import { generateTokenPair } from '@/lib/jwt';
 import { loginSchema } from '@/lib/schemas';
 import { ApiResponse } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
-
-// Rate limiting simple (en producción usar algo más robusto)
-const loginAttempts = new Map<string, { count: number; resetTime: number }>();
-
-function checkRateLimit(email: string): boolean {
-  const now = Date.now();
-  const attempt = loginAttempts.get(email);
-
-  if (!attempt || now > attempt.resetTime) {
-    // Resetear si pasó el tiempo o no existe
-    loginAttempts.set(email, { count: 1, resetTime: now + 15 * 60 * 1000 }); // 15 min
-    return true;
-  }
-
-  if (attempt.count >= 5) {
-    // Máximo 5 intentos en 15 minutos
-    return false;
-  }
-
-  attempt.count++;
-  return true;
-}
+import { checkRateLimit, recordLoginAttempt, clearLoginAttempts } from '@/lib/rateLimit';
+import { createAuditLog, getClientIp } from '@/lib/audit';
 
 export async function POST(request: NextRequest) {
   try {
@@ -48,9 +28,31 @@ export async function POST(request: NextRequest) {
     
     // Normalizar email a minúsculas
     const normalizedEmail = email.toLowerCase().trim();
+    const ipAddress = getClientIp(request);
+    const userAgent = request.headers.get('user-agent') || undefined;
 
-    // Rate limiting
-    if (!checkRateLimit(normalizedEmail)) {
+    // Rate limiting persistente
+    const rateLimitCheck = await checkRateLimit(normalizedEmail, ipAddress);
+    if (!rateLimitCheck.allowed) {
+      logger.warn('Rate limit exceeded', { 
+        email: normalizedEmail, 
+        ipAddress,
+        resetTime: rateLimitCheck.resetTime,
+      });
+
+      // Registrar auditoría del intento bloqueado
+      await createAuditLog({
+        action: 'CREATE',
+        entity: 'LoginAttempt',
+        description: `Login bloqueado por rate limit: ${normalizedEmail}`,
+        metadata: { 
+          email: normalizedEmail, 
+          reason: 'rate_limit_exceeded',
+          resetTime: rateLimitCheck.resetTime,
+        },
+        ipAddress,
+      });
+
       return ApiResponse.rateLimited(
         'Demasiados intentos fallidos. Intenta de nuevo más tarde'
       );
@@ -67,12 +69,39 @@ export async function POST(request: NextRequest) {
     });
 
     if (!user) {
-      logger.warn('Login attempt with non-existent email', { email: normalizedEmail });
+      logger.warn('Login attempt with non-existent email', { email: normalizedEmail, ipAddress });
+      
+      // Registrar intento fallido
+      await recordLoginAttempt(normalizedEmail, false, ipAddress, userAgent);
+      
+      // Auditoría
+      await createAuditLog({
+        action: 'CREATE',
+        entity: 'LoginAttempt',
+        description: `Login fallido: email no existe - ${normalizedEmail}`,
+        metadata: { email: normalizedEmail, reason: 'user_not_found' },
+        ipAddress,
+      });
+
       return ApiResponse.unauthorized('Usuario o contraseña incorrectos');
     }
 
     if (!user.active) {
-      logger.warn('Login attempt with inactive user', { email: normalizedEmail });
+      logger.warn('Login attempt with inactive user', { email: normalizedEmail, ipAddress });
+      
+      // Registrar intento fallido
+      await recordLoginAttempt(normalizedEmail, false, ipAddress, userAgent);
+      
+      // Auditoría
+      await createAuditLog({
+        userId: user.id,
+        action: 'CREATE',
+        entity: 'LoginAttempt',
+        description: `Login fallido: usuario inactivo - ${normalizedEmail}`,
+        metadata: { email: normalizedEmail, reason: 'user_inactive' },
+        ipAddress,
+      });
+
       return ApiResponse.unauthorized('Usuario inactivo');
     }
 
@@ -80,7 +109,21 @@ export async function POST(request: NextRequest) {
     const passwordMatch = await bcrypt.compare(password, user.passwordHash);
 
     if (!passwordMatch) {
-      logger.warn('Login attempt with incorrect password', { email: normalizedEmail });
+      logger.warn('Login attempt with incorrect password', { email: normalizedEmail, ipAddress });
+      
+      // Registrar intento fallido
+      await recordLoginAttempt(normalizedEmail, false, ipAddress, userAgent);
+      
+      // Auditoría
+      await createAuditLog({
+        userId: user.id,
+        action: 'CREATE',
+        entity: 'LoginAttempt',
+        description: `Login fallido: contraseña incorrecta - ${normalizedEmail}`,
+        metadata: { email: normalizedEmail, reason: 'wrong_password' },
+        ipAddress,
+      });
+
       return ApiResponse.unauthorized('Usuario o contraseña incorrectos');
     }
 
@@ -100,6 +143,26 @@ export async function POST(request: NextRequest) {
         refreshTokenHash,
         refreshTokenExpiresAt,
       },
+    });
+
+    // Registrar intento exitoso
+    await recordLoginAttempt(normalizedEmail, true, ipAddress, userAgent);
+    
+    // Limpiar intentos fallidos previos
+    await clearLoginAttempts(normalizedEmail);
+
+    // Auditoría de login exitoso
+    await createAuditLog({
+      userId: user.id,
+      action: 'CREATE',
+      entity: 'Login',
+      description: `Usuario autenticado exitosamente: ${user.name} (${normalizedEmail})`,
+      metadata: { 
+        email: normalizedEmail,
+        globalRole: user.globalRole,
+        userAgent,
+      },
+      ipAddress,
     });
 
     // Crear respuesta
@@ -125,10 +188,7 @@ export async function POST(request: NextRequest) {
       path: '/',
     });
 
-    // Limpiar contador de intentos fallidos
-    loginAttempts.delete(normalizedEmail);
-
-    logger.log('User logged in successfully', { userId: user.id, email: normalizedEmail });
+    logger.log('User logged in successfully', { userId: user.id, email: normalizedEmail, ipAddress });
 
     return response;
   } catch (error) {
@@ -136,3 +196,4 @@ export async function POST(request: NextRequest) {
     return ApiResponse.internalError('Error al procesar login');
   }
 }
+

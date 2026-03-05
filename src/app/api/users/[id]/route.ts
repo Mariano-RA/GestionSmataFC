@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db as prisma } from '@/lib/db';
 import bcrypt from 'bcryptjs';
 import { validateRequestAuth, getClientIp } from '@/lib/auth';
+import { updateUserSchema } from '@/lib/schemas';
+import { ApiResponse } from '@/lib/api-response';
 import type { Prisma } from '@prisma/client';
 
 // GET /api/users/[id] - Obtener un usuario específico
@@ -91,7 +93,15 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { email, name, password, active, teamIds } = body;
+    
+    // Validar con Zod
+    const validation = updateUserSchema.safeParse(body);
+    if (!validation.success) {
+      return ApiResponse.fromZodError(validation.error);
+    }
+
+    const { email, name, password, active } = validation.data;
+    const teamIds = body.teamIds; // teamIds no está en el schema, se maneja aparte
 
     const currentUser = await prisma.user.findUnique({
       where: { id: userId },
