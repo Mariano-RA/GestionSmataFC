@@ -94,23 +94,27 @@ export async function GET(request: NextRequest) {
       _count: true,
     });
 
-    // Usuarios más activos
-    const mostActiveUsers = await prisma.auditLog.groupBy({
+    // Usuarios más activos (solo con userId no nulo)
+    const mostActiveUsersRaw = await prisma.auditLog.groupBy({
       by: ['userId'],
       _count: true,
       orderBy: { _count: { userId: 'desc' } },
-      take: 5,
+      take: 10, // pedir más por si hay nulls
     });
 
+    const mostActiveUsers = mostActiveUsersRaw.filter(
+      (stat): stat is typeof stat & { userId: number } => stat.userId != null
+    ).slice(0, 5);
+
     const activeUsersDetails = await Promise.all(
-      mostActiveUsers.map(async (stat: any) => {
+      mostActiveUsers.map(async (stat) => {
         const user = await prisma.user.findUnique({
           where: { id: stat.userId },
           select: { name: true, email: true },
         });
         return {
           userId: stat.userId,
-          user: user || { name: 'Unknown', email: 'unknown' },
+          user: user ?? { name: 'Unknown', email: 'unknown' },
           actionCount: stat._count,
         };
       })

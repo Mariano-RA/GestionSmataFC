@@ -135,8 +135,8 @@ export type UpdateConfigRequest = z.infer<typeof updateConfigSchema>;
 // ==================== USER-TEAM SCHEMAS ====================
 
 export const createUserTeamSchema = z.object({
-  userId: z.number().int().positive('User ID requerido'),
-  teamId: z.number().int().positive('Team ID requerido'),
+  userId: z.coerce.number().int().positive('User ID requerido'),
+  teamId: z.coerce.number().int().positive('Team ID requerido'),
   role: z.enum(['admin', 'viewer']).optional().default('admin'),
 });
 

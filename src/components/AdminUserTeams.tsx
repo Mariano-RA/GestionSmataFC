@@ -124,8 +124,8 @@ export default function AdminUserTeams() {
       await request('/api/admin/user-teams', {
         method: 'POST',
         body: {
-          userId: formData.userId,
-          teamId: parseInt(formData.teamId),
+          userId: parseInt(formData.userId, 10),
+          teamId: parseInt(formData.teamId, 10),
           role: formData.role,
         },
         disableAutoParams: true,
