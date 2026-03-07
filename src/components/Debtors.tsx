@@ -70,7 +70,22 @@ export default function Debtors({
     filtered = allParticipantsStatus.filter(p => p.debt === 0);
   }
 
-  const openWhatsAppForDebtor = (name: string, debtThisMonth: number, previousDebt: number) => {
+  const normalizePhoneForWhatsApp = (phone: string | null | undefined): string | null => {
+    if (!phone || !phone.trim()) return null;
+    const digits = phone.replace(/\D/g, '');
+    if (digits.length < 8) return null;
+    if (digits.startsWith('54') && digits.length >= 12) return digits;
+    if (digits.length === 10 && digits.startsWith('9')) return '54' + digits;
+    if (digits.length === 11 && digits.startsWith('15')) return '54' + '9' + digits.slice(2);
+    return digits;
+  };
+
+  const openWhatsAppForDebtor = (
+    phone: string | null | undefined,
+    name: string,
+    debtThisMonth: number,
+    previousDebt: number
+  ) => {
     const monthName = getMonthName(currentMonth);
     const totalDebt = debtThisMonth + previousDebt;
     let message = `Hola ${normalizeName(name)}, te recuerdo que tenés una cuota pendiente de ${formatCurrency(debtThisMonth)} correspondiente al mes de ${monthName}.`;
@@ -78,7 +93,13 @@ export default function Debtors({
       message += ` Además tenés una deuda anterior de ${formatCurrency(previousDebt)}, lo que hace un total de ${formatCurrency(totalDebt)}.`;
     }
     message += ' ¡Gracias!';
-    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+    const encoded = encodeURIComponent(message);
+    const waNumber = normalizePhoneForWhatsApp(phone);
+    if (waNumber) {
+      window.open(`https://wa.me/${waNumber}?text=${encoded}`, '_blank', 'noopener,noreferrer');
+    } else {
+      addToast('Este jugador no tiene número cargado. Agregalo en Participantes.', 'error');
+    }
   };
 
   return (
@@ -168,7 +189,7 @@ export default function Debtors({
                       type="button"
                       className="btn btn-sm"
                       style={{ fontSize: '12px', background: '#25D366', color: '#fff', border: 'none' }}
-                      onClick={(e) => { e.stopPropagation(); openWhatsAppForDebtor(p.name, p.debt, p.previousDebt); }}
+                      onClick={(e) => { e.stopPropagation(); openWhatsAppForDebtor(p.phone, p.name, p.debt, p.previousDebt); }}
                     >
                       📲 Avisar por WhatsApp
                     </button>
