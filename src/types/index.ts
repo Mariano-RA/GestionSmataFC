@@ -81,13 +81,19 @@ export interface Expense {
   recordedAt: string;
 }
 
+const DEFAULT_EXPENSE_CATEGORIES = ['Alquiler', 'Arbitraje', 'Equipamiento', 'Otros'];
+
 /** Contrato de configuración global (GET /api/config sin month). */
 export interface AppConfig {
   monthlyTarget: number;
   fieldRental: number;
   maxParticipants: number;
   notes: string;
+  /** Categorías de gastos personalizadas (guardadas en Config key EXPENSE_CATEGORIES). */
+  expenseCategories?: string[];
 }
+
+export { DEFAULT_EXPENSE_CATEGORIES };
 
 /** Config mensual en BD (rent). La API puede devolver fieldRental como alias. */
 export interface MonthlyConfig {

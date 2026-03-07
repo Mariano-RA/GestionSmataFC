@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { formatCurrency, normalizeName } from '@/lib/utils';
+import { formatCurrency, getMonthName, normalizeName } from '@/lib/utils';
 import type { Participant, Payment } from '@/types';
 
 interface DebtorsProps {
@@ -25,18 +25,35 @@ export default function Debtors({
   const allParticipantsStatus = participants
     .filter(p => p.active)
     .map(p => {
-      const paid = payments
-        .filter(pay => pay.participantId === p.id && pay.date.startsWith(currentMonth))
+      const participantPayments = payments.filter(pay => pay.participantId === p.id);
+      const paidThisMonth = participantPayments
+        .filter(pay => pay.date.startsWith(currentMonth))
         .reduce((sum, pay) => sum + pay.amount, 0);
-      
-      const monthPayments = payments.filter(
-        pay => pay.participantId === p.id && pay.date.startsWith(currentMonth)
-      ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      
+
+      const monthPayments = participantPayments
+        .filter(pay => pay.date.startsWith(currentMonth))
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+      const debtThisMonth = Math.max(0, monthlyShare - paidThisMonth);
+
+      const monthsWithActivity = new Set(participantPayments.map(pay => pay.date.slice(0, 7)));
+      monthsWithActivity.add(currentMonth);
+      const allMonths = Array.from(monthsWithActivity).sort();
+      let totalDebt = 0;
+      allMonths.forEach(month => {
+        const paidInMonth = participantPayments
+          .filter(pay => pay.date.startsWith(month))
+          .reduce((sum, pay) => sum + pay.amount, 0);
+        totalDebt += Math.max(0, monthlyShare - paidInMonth);
+      });
+      const previousDebt = Math.max(0, totalDebt - debtThisMonth);
+
       return {
         ...p,
-        paid,
-        debt: Math.max(0, monthlyShare - paid),
+        paid: paidThisMonth,
+        debt: debtThisMonth,
+        previousDebt,
+        totalDebt,
         paymentHistory: monthPayments
       };
     })
@@ -52,6 +69,17 @@ export default function Debtors({
   } else if (filterType === 'completed') {
     filtered = allParticipantsStatus.filter(p => p.debt === 0);
   }
+
+  const openWhatsAppForDebtor = (name: string, debtThisMonth: number, previousDebt: number) => {
+    const monthName = getMonthName(currentMonth);
+    const totalDebt = debtThisMonth + previousDebt;
+    let message = `Hola ${normalizeName(name)}, te recuerdo que tenés una cuota pendiente de ${formatCurrency(debtThisMonth)} correspondiente al mes de ${monthName}.`;
+    if (previousDebt > 0) {
+      message += ` Además tenés una deuda anterior de ${formatCurrency(previousDebt)}, lo que hace un total de ${formatCurrency(totalDebt)}.`;
+    }
+    message += ' ¡Gracias!';
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
+  };
 
   return (
     <div className="tab-content">
@@ -134,7 +162,18 @@ export default function Debtors({
                   </div>
                   <span className="debtors-amount" style={{ fontSize: '14px' }}>{formatCurrency(p.debt)}</span>
                 </div>
-                
+                {p.debt > 0 && (
+                  <div style={{ marginBottom: '8px', marginLeft: '4px' }}>
+                    <button
+                      type="button"
+                      className="btn btn-sm"
+                      style={{ fontSize: '12px', background: '#25D366', color: '#fff', border: 'none' }}
+                      onClick={(e) => { e.stopPropagation(); openWhatsAppForDebtor(p.name, p.debt, p.previousDebt); }}
+                    >
+                      📲 Avisar por WhatsApp
+                    </button>
+                  </div>
+                )}
                 {/* Historial expandible */}
                 {expandedId === p.id && p.paymentHistory.length > 0 && (
                   <div style={{ padding: '10px 12px', background: 'var(--bg-secondary)', marginBottom: '8px', borderRadius: '4px', fontSize: '12px', color: 'var(--text-secondary)' }}>

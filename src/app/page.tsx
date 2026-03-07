@@ -241,6 +241,7 @@ export default function Home() {
         {activeTab === 'expenses' && (
           <Expenses
             expenses={expenses}
+            expenseCategories={config.expenseCategories}
             addToast={addToast}
             currentMonth={currentMonth}
             onAdd={handleAddExpense}

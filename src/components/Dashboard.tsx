@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { formatCurrency, getMonthName } from '@/lib/utils';
 import ExpenseTrend from './ExpenseTrend';
 import PaymentStats from './PaymentStats';
@@ -31,8 +30,11 @@ export default function Dashboard({
   const monthExpenses = expenses.filter(e => e.date.startsWith(currentMonth));
   
   const collected = monthPayments.reduce((sum, p) => sum + p.amount, 0);
-  const totalExpenses = monthExpenses.reduce((sum, e) => sum + e.amount, 0);
-  const profit = Math.max(0, collected - totalExpenses);
+  const recordedExpenses = monthExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const objectiveAndRental = (config.monthlyTarget || 0) + (config.fieldRental || 0);
+  const totalCosts = recordedExpenses + objectiveAndRental;
+  const profit = collected - totalCosts;
+  const isProfitPositive = profit >= 0;
 
   const totalDebt = participants
     .filter(p => p.active)
@@ -44,6 +46,43 @@ export default function Dashboard({
     }, 0);
 
   const progress = monthlyObjective > 0 ? (collected / monthlyObjective) * 100 : 0;
+
+  const getParticipantName = (participantId: number) =>
+    participants.find(p => p.id === participantId)?.name ?? '';
+
+  const exportToCsv = () => {
+    const BOM = '\uFEFF';
+    const lines: string[] = [
+      `Resumen Financiero - ${getMonthName(currentMonth)}`,
+      '',
+      'PAGOS',
+      'Fecha;Participante;Monto;Método;Nota',
+      ...monthPayments
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .map(p => `${p.date};${getParticipantName(p.participantId).replace(/;/g, ',')};${p.amount};${p.method ?? ''};${(p.note ?? '').replace(/;/g, ',')}`),
+      '',
+      'GASTOS',
+      'Fecha;Concepto;Categoría;Monto',
+      ...monthExpenses
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .map(e => `${e.date};${e.name.replace(/;/g, ',')};${e.category.replace(/;/g, ',')};${e.amount}`),
+      '',
+      'RESUMEN',
+      `Recaudado;${collected}`,
+      `Gastos registrados;${recordedExpenses}`,
+      `Objetivo + Alquiler;${objectiveAndRental}`,
+      `Total costos;${totalCosts}`,
+      `Ganancia Neta;${profit}`,
+    ];
+    const csv = BOM + lines.join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `resumen-${currentMonth}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="tab-content active">
@@ -95,11 +134,11 @@ export default function Dashboard({
       <div style={{ background: 'var(--bg-primary)', padding: '15px', borderRadius: '8px', marginBottom: '15px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', border: '1px solid var(--border)' }}>
         <h3 style={{ marginBottom: '15px', color: 'var(--primary)' }}>🔔 Resumen</h3>
         <div style={{ fontSize: '14px', lineHeight: '1.8', color: 'var(--text)' }}>
-          <p>🎯 Objetivo Base: <strong>{formatCurrency(config.monthlyTarget)}</strong></p>
-          <p>🏟️ Alquiler: <strong>{formatCurrency(config.fieldRental)}</strong></p>
+          <p>🎯 Objetivo base: <strong>{formatCurrency(config.monthlyTarget)}</strong></p>
+          <p>🏟️ Alquileres: <strong>{formatCurrency(config.fieldRental)}</strong></p>
+          <p>💸 Gastos registrados: <strong>{formatCurrency(recordedExpenses)}</strong></p>
           <p>💰 Recaudado: <strong>{formatCurrency(collected)}</strong></p>
-          <p>💸 Gastos: <strong>{formatCurrency(totalExpenses)}</strong></p>
-          <p>📈 Ganancia Neta: <strong>{formatCurrency(profit)}</strong></p>
+          <p>📈 Ganancia Neta: <strong style={{ color: isProfitPositive ? 'var(--success)' : 'var(--danger)' }}>{formatCurrency(profit)}</strong></p>
           <p>⚠️ Deuda Pendiente: <strong>{formatCurrency(totalDebt)}</strong></p>
         </div>
       </div>
@@ -113,7 +152,9 @@ export default function Dashboard({
       />
       <ExpenseTrend expenses={monthExpenses} />
 
-      <button className="btn btn-primary" style={{ marginTop: '15px' }}>📄 Exportar a TXT</button>
+      <button className="btn btn-primary" style={{ marginTop: '15px' }} onClick={exportToCsv}>
+        📄 Exportar a CSV
+      </button>
     </div>
   );
 }

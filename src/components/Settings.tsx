@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { addMonths, getMonthName } from '@/lib/utils';
 import type { AppConfig } from '@/types';
+import { DEFAULT_EXPENSE_CATEGORIES } from '@/types';
 import { useUser } from '@/context/UserContext';
 import { logger } from '@/lib/logger';
 
@@ -31,6 +32,10 @@ export default function Settings({
   const [rental, setRental] = useState((config?.fieldRental || 0).toString());
   const [maxPart, setMaxPart] = useState((config?.maxParticipants || 25).toString());
   const [notes, setNotes] = useState(config?.notes || '');
+  const [expenseCategories, setExpenseCategories] = useState<string[]>(
+    config?.expenseCategories?.length ? config.expenseCategories : [...DEFAULT_EXPENSE_CATEGORIES]
+  );
+  const [newCategoryInput, setNewCategoryInput] = useState('');
 
   const getAuthHeaders = () => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
@@ -92,6 +97,9 @@ export default function Settings({
     setRental((config?.fieldRental || 0).toString());
     setMaxPart((config?.maxParticipants || 25).toString());
     setNotes(config?.notes || '');
+    setExpenseCategories(
+      config?.expenseCategories?.length ? config.expenseCategories : [...DEFAULT_EXPENSE_CATEGORIES]
+    );
   }, [currentMonth, config]);
 
   const handleSave = async () => {
@@ -104,7 +112,8 @@ export default function Settings({
       monthlyTarget: Number(monthly),
       fieldRental: Number(rental),
       maxParticipants: Number(maxPart),
-      notes
+      notes,
+      expenseCategories
     };
 
     if (
@@ -117,12 +126,19 @@ export default function Settings({
     }
 
     try {
-      // Guardar configuración global
+      // Guardar configuración global (API espera keys planas; EXPENSE_CATEGORIES es la key en BD)
+      const globalPayload = {
+        monthlyTarget: newConfig.monthlyTarget,
+        fieldRental: newConfig.fieldRental,
+        maxParticipants: newConfig.maxParticipants,
+        notes: newConfig.notes,
+        EXPENSE_CATEGORIES: newConfig.expenseCategories
+      };
       const globalRes = await fetch(`/api/config?teamId=${currentTeamId}`, {
         method: 'POST',
         headers: getAuthHeaders(),
         credentials: 'include',
-        body: JSON.stringify(newConfig)
+        body: JSON.stringify(globalPayload)
       });
 
       if (!globalRes.ok) {
@@ -146,7 +162,7 @@ export default function Settings({
         throw new Error(err?.error || 'No se pudo guardar la configuración mensual');
       }
 
-      onSave(newConfig);
+      onSave({ ...newConfig, expenseCategories });
       addToast(`Configuración guardada para ${getMonthName(selectedMonth)}`, 'success');
     } catch (error) {
       logger.error('Error saving config:', error);
@@ -211,6 +227,73 @@ export default function Settings({
           onChange={(e) => setNotes(e.target.value)}
           rows={3}
         />
+      </div>
+
+      <div className="form-group" style={{ marginTop: '20px' }}>
+        <label>🏷️ Categorías de gastos</label>
+        <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+          Agregá o quitá categorías para usar en Gastos. Al guardar se actualizan en toda la app.
+        </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+          {expenseCategories.map(cat => (
+            <span
+              key={cat}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '4px 10px',
+                background: 'var(--bg-secondary)',
+                border: '1px solid var(--border)',
+                borderRadius: '6px',
+                fontSize: '13px'
+              }}
+            >
+              {cat}
+              <button
+                type="button"
+                className="btn btn-sm"
+                style={{ padding: '0 4px', minWidth: 'auto', fontSize: '14px', lineHeight: 1 }}
+                onClick={() => setExpenseCategories(prev => prev.filter(c => c !== cat))}
+                aria-label={`Quitar ${cat}`}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <input
+            type="text"
+            value={newCategoryInput}
+            onChange={(e) => setNewCategoryInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                const v = newCategoryInput.trim();
+                if (v && !expenseCategories.includes(v)) {
+                  setExpenseCategories(prev => [...prev, v]);
+                  setNewCategoryInput('');
+                }
+              }
+            }}
+            placeholder="Nueva categoría (ej: Comida)"
+            style={{ flex: 1, padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text)' }}
+          />
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => {
+              const v = newCategoryInput.trim();
+              if (v && !expenseCategories.includes(v)) {
+                setExpenseCategories(prev => [...prev, v]);
+                setNewCategoryInput('');
+              }
+            }}
+          >
+            Agregar
+          </button>
+        </div>
       </div>
 
       <button className="btn btn-success" onClick={handleSave}>

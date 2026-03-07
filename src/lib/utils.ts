@@ -35,5 +35,6 @@ export const DEFAULT_CONFIG = {
   monthlyTarget: 1510000,
   fieldRental: 310000,
   maxParticipants: 25,
-  notes: ''
+  notes: '',
+  expenseCategories: ['Alquiler', 'Arbitraje', 'Equipamiento', 'Otros'] as string[],
 };

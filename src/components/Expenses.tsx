@@ -3,10 +3,12 @@
 import { useState } from 'react';
 import { formatCurrency } from '@/lib/utils';
 import type { Expense } from '@/types';
+import { DEFAULT_EXPENSE_CATEGORIES } from '@/types';
 
 interface ExpensesProps {
   expenses: Expense[];
   currentMonth: string;
+  expenseCategories?: string[];
   onAdd: (name: string, amount: number, date: string, category: string) => void;
   onUpdate: (id: number, name: string, amount: number, date: string, category: string) => void;
   onDelete: (id: number) => void;
@@ -16,6 +18,7 @@ interface ExpensesProps {
 export default function Expenses({
   expenses,
   currentMonth,
+  expenseCategories = DEFAULT_EXPENSE_CATEGORIES,
   onAdd,
   onUpdate,
   onDelete,
@@ -24,20 +27,19 @@ export default function Expenses({
   const [name, setName] = useState('');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [category, setCategory] = useState('Otros');
+  const categories = expenseCategories?.length ? expenseCategories : DEFAULT_EXPENSE_CATEGORIES;
+  const [category, setCategory] = useState(categories[0] ?? 'Otros');
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [filterCategory, setFilterCategory] = useState('Todos');
-
-  const CATEGORIES = ['Alquiler', 'Arbitraje', 'Equipamiento', 'Otros'];
 
   const openAdd = () => {
     setEditingId(null);
     setName('');
     setAmount('');
     setDate(new Date().toISOString().split('T')[0]);
-    setCategory('Otros');
+    setCategory(categories[0] ?? 'Otros');
     setShowModal(true);
   };
 
@@ -108,7 +110,7 @@ export default function Expenses({
           }}
         >
           <option value="Todos">📁 Todos los gastos</option>
-          {CATEGORIES.map(cat => (
+          {categories.map(cat => (
             <option key={cat} value={cat}>{cat}</option>
           ))}
         </select>
@@ -181,7 +183,7 @@ export default function Expenses({
           <div className="form-group">
             <label>Categoría</label>
             <select value={category} onChange={(e) => setCategory(e.target.value)}>
-              {CATEGORIES.map(cat => (
+              {categories.map(cat => (
                 <option key={cat} value={cat}>{cat}</option>
               ))}
             </select>

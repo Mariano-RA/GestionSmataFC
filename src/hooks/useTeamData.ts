@@ -281,8 +281,13 @@ export function useTeamData(
 
   const handleSaveConfig = useCallback(
     async (newConfig: AppConfig) => {
+      if (!currentTeamId) return;
       try {
-        const res = await request<unknown>('/api/config', { method: 'POST', body: newConfig as unknown as Record<string, unknown> });
+        const url = `/api/config?teamId=${currentTeamId}`;
+        const res = await request<unknown>(url, {
+          method: 'POST',
+          body: newConfig as unknown as Record<string, unknown>,
+        });
         if (res !== null) {
           addToast('Configuración guardada', 'success');
           await loadAllData();
@@ -291,7 +296,7 @@ export function useTeamData(
         addToast(error instanceof Error ? error.message : 'Error guardando configuración', 'error');
       }
     },
-    [request, loadAllData, addToast]
+    [request, currentTeamId, loadAllData, addToast]
   );
 
   const handleResetConfig = useCallback(async () => {

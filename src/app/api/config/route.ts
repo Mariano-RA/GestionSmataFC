@@ -67,11 +67,20 @@ export async function GET(request: NextRequest) {
         (config as Record<string, unknown>)[entry.key] = entry.value;
       }
     });
+    const defaultCategories = ['Alquiler', 'Arbitraje', 'Equipamiento', 'Otros'];
+    const rawCategories =
+      (config as Record<string, unknown>).EXPENSE_CATEGORIES ??
+      (config as Record<string, unknown>).expenseCategories;
+    const expenseCategories = Array.isArray(rawCategories)
+      ? rawCategories.filter((c): c is string => typeof c === 'string')
+      : defaultCategories;
+
     const appConfig = {
       monthlyTarget: Number(config.monthlyTarget) || DEFAULT_CONFIG.monthlyTarget,
       fieldRental: Number(config.fieldRental) ?? DEFAULT_CONFIG.fieldRental,
       maxParticipants: Number(config.maxParticipants) ?? DEFAULT_CONFIG.maxParticipants,
       notes: typeof config.notes === 'string' ? config.notes : DEFAULT_CONFIG.notes,
+      expenseCategories,
     };
     return ApiResponse.ok(appConfig);
   } catch (error) {
