@@ -17,10 +17,6 @@ interface User {
   };
 }
 
-interface AdminUsersResponse {
-  data: User[];
-}
-
 export default function AdminUsers() {
   const { request } = useApi();
   const [users, setUsers] = useState<User[]>([]);
@@ -41,12 +37,12 @@ export default function AdminUsers() {
   const loadUsers = async () => {
     try {
       setLoading(true);
-      const data = await request<AdminUsersResponse>('/api/admin/users', {
+      const data = await request<User[]>('/api/admin/users', {
         disableAutoParams: true,
       });
 
-      if (data?.data) {
-        setUsers(data.data);
+      if (data && Array.isArray(data)) {
+        setUsers(data);
       } else {
         throw new Error('Error al cargar usuarios');
       }

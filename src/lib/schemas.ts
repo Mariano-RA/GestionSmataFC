@@ -150,16 +150,60 @@ export type UpdateUserTeamRequest = z.infer<typeof updateUserTeamSchema>;
 
 // ==================== VALIDATION HELPER ====================
 
+// ==================== IMPORT (BACKUP) SCHEMAS ====================
+
+const importParticipantSchema = z.object({
+  id: z.number().optional(),
+  name: z.string().min(1, 'Nombre requerido'),
+  phone: z.string().optional(),
+  notes: z.string().optional(),
+  active: z.boolean().optional(),
+});
+
+const importPaymentSchema = z.object({
+  participantId: z.number().int().nonnegative(),
+  date: z.string().min(1),
+  amount: z.coerce.number().int().nonnegative(),
+  method: z.string().optional(),
+  note: z.string().optional(),
+});
+
+const importExpenseSchema = z.object({
+  name: z.string().min(1),
+  amount: z.coerce.number().int().nonnegative(),
+  date: z.string().min(1),
+  category: z.string().optional(),
+});
+
+const importConfigSchema = z.object({
+  monthlyTarget: z.coerce.number().nonnegative().optional(),
+  fieldRental: z.coerce.number().nonnegative().optional(),
+  maxParticipants: z.coerce.number().int().positive().optional(),
+  notes: z.string().optional(),
+});
+
+export const importBackupSchema = z.object({
+  teamId: z.coerce.number().int().positive(),
+  participants: z.array(importParticipantSchema).optional().default([]),
+  payments: z.array(importPaymentSchema).optional().default([]),
+  expenses: z.array(importExpenseSchema).optional().default([]),
+  config: importConfigSchema.optional(),
+});
+
+export type ImportBackupRequest = z.infer<typeof importBackupSchema>;
+
+// ==================== VALIDATION HELPER ====================
+
 /**
  * Validate request body against schema
  * Returns { isValid: true, data } or { isValid: false, errors }
  */
-export function validateRequest<T>(schema: z.ZodSchema, data: unknown): 
+export function validateRequest<T>(schema: z.ZodSchema, data: unknown):
   | { isValid: true; data: T }
   | { isValid: false; errors: z.ZodIssue[] } {
   const result = schema.safeParse(data);
   if (result.success) {
     return { isValid: true, data: result.data as T };
   }
-    return { isValid: false, errors: result.error.issues };
+  return { isValid: false, errors: result.error.issues };
 }

@@ -75,9 +75,16 @@ export default function Expenses({
     }
   };
 
-  const monthExpenses = expenses.filter(e => e.date.startsWith(currentMonth));
-  const filteredExpenses = filterCategory === 'Todos' 
-    ? monthExpenses 
+  const monthExpenses = expenses
+    .filter(e => e.date.startsWith(currentMonth))
+    .sort((a, b) => {
+      const dateA = new Date(a.date).getTime();
+      const dateB = new Date(b.date).getTime();
+      if (dateB !== dateA) return dateB - dateA;
+      return (b.id ?? 0) - (a.id ?? 0);
+    });
+  const filteredExpenses = filterCategory === 'Todos'
+    ? monthExpenses
     : monthExpenses.filter(e => e.category === filterCategory);
   
   const totalExpenses = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);

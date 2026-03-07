@@ -2,7 +2,8 @@ export const runtime = 'nodejs';
 
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
-import { validateProtectedTeamRoute, getClientIp } from '@/lib/auth';
+import { validateProtectedTeamRouteWithMethod, getClientIp } from '@/lib/auth';
+import { createAuditLog } from '@/lib/audit';
 import { updatePaymentSchema } from '@/lib/schemas';
 import { ApiResponse } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
@@ -23,30 +24,32 @@ export async function DELETE(
       return ApiResponse.notFound('Payment not found');
     }
 
-    // Validar acceso al equipo
-    const auth = await validateProtectedTeamRoute(request, db, payment.teamId);
+    // Validar acceso al equipo y permiso de eliminación
+    const auth = await validateProtectedTeamRouteWithMethod(request, db, payment.teamId, 'DELETE');
     if (!auth.authorized) {
       return ApiResponse.unauthorized(auth.error);
     }
 
     const userId = auth.userId;
+    const ip = getClientIp(request) ?? undefined;
 
-    // Crear log antes de eliminar
-    await db.auditLog.create({
-      data: {
-        teamId: payment.teamId,
-        userId: userId || null,
-        action: 'DELETE',
-        entity: 'Payment',
-        entityId: payment.id,
-        description: `Pago eliminado: $${payment.amount}`,
-        metadata: JSON.stringify(payment),
-        ipAddress: getClientIp(request) || null,
-      },
-    });
-
-    await db.payment.delete({
-      where: { id: Number(id) }
+    await db.$transaction(async (tx) => {
+      await createAuditLog(
+        {
+          teamId: payment.teamId,
+          userId,
+          action: 'DELETE',
+          entity: 'Payment',
+          entityId: payment.id,
+          description: `Pago eliminado: $${payment.amount}`,
+          metadata: payment,
+          ipAddress: ip,
+        },
+        tx
+      );
+      await tx.payment.delete({
+        where: { id: Number(id) },
+      });
     });
 
     return ApiResponse.ok({ success: true });
@@ -79,37 +82,40 @@ export async function PATCH(
       return ApiResponse.notFound('Payment not found');
     }
 
-    // Validar acceso al equipo
-    const auth = await validateProtectedTeamRoute(request, db, currentPayment.teamId);
+    // Validar acceso al equipo y permiso de escritura
+    const auth = await validateProtectedTeamRouteWithMethod(request, db, currentPayment.teamId, 'PATCH');
     if (!auth.authorized) {
       return ApiResponse.unauthorized(auth.error);
     }
 
     const userId = auth.userId;
+    const ip = getClientIp(request) ?? undefined;
 
-    const payment = await db.payment.update({
-      where: { id: Number(id) },
-      data: {
-        participantId,
-        date,
-        amount: Number(amount),
-        method: method || null,
-        note: note || null,
-      }
-    });
-
-    // Crear log de auditoría
-    await db.auditLog.create({
-      data: {
-        teamId: payment.teamId,
-        userId: userId || null,
-        action: 'UPDATE',
-        entity: 'Payment',
-        entityId: payment.id,
-        description: `Pago actualizado: $${payment.amount}`,
-        metadata: JSON.stringify({ before: currentPayment, after: payment }),
-        ipAddress: getClientIp(request) || null,
-      },
+    const payment = await db.$transaction(async (tx) => {
+      const updated = await tx.payment.update({
+        where: { id: Number(id) },
+        data: {
+          participantId,
+          date,
+          amount: Number(amount),
+          method: method || null,
+          note: note || null,
+        },
+      });
+      await createAuditLog(
+        {
+          teamId: updated.teamId,
+          userId,
+          action: 'UPDATE',
+          entity: 'Payment',
+          entityId: updated.id,
+          description: `Pago actualizado: $${updated.amount}`,
+          metadata: { before: currentPayment, after: updated },
+          ipAddress: ip,
+        },
+        tx
+      );
+      return updated;
     });
 
     return ApiResponse.ok(payment);

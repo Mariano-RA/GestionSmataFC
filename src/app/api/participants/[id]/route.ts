@@ -2,7 +2,8 @@ export const runtime = 'nodejs';
 
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
-import { validateProtectedTeamRoute, getClientIp } from '@/lib/auth';
+import { validateProtectedTeamRouteWithMethod, getClientIp } from '@/lib/auth';
+import { createAuditLog } from '@/lib/audit';
 import { updateParticipantSchema } from '@/lib/schemas';
 import { ApiResponse } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
@@ -22,8 +23,8 @@ export async function GET(
       return ApiResponse.notFound('Participant not found');
     }
 
-    // Validar acceso al equipo del participante
-    const auth = await validateProtectedTeamRoute(request, db, participant.teamId);
+    // Validar acceso al equipo y permiso de lectura
+    const auth = await validateProtectedTeamRouteWithMethod(request, db, participant.teamId, 'GET');
     if (!auth.authorized) {
       return ApiResponse.unauthorized(auth.error);
     }
@@ -58,31 +59,34 @@ export async function PATCH(
       return ApiResponse.notFound('Participant not found');
     }
 
-    // Validar acceso al equipo
-    const auth = await validateProtectedTeamRoute(request, db, currentParticipant.teamId);
+    // Validar acceso al equipo y permiso de escritura
+    const auth = await validateProtectedTeamRouteWithMethod(request, db, currentParticipant.teamId, 'PATCH');
     if (!auth.authorized) {
       return ApiResponse.unauthorized(auth.error);
     }
 
     const userId = auth.userId;
+    const ip = getClientIp(request) ?? undefined;
 
-    const participant = await db.participant.update({
-      where: { id: Number(id) },
-      data
-    });
-
-    // Crear log de auditoría
-    await db.auditLog.create({
-      data: {
-        teamId: participant.teamId,
-        userId: userId || null,
-        action: 'UPDATE',
-        entity: 'Participant',
-        entityId: participant.id,
-        description: `Participante actualizado: ${participant.name}`,
-        metadata: JSON.stringify({ before: currentParticipant, after: participant }),
-        ipAddress: getClientIp(request) || null,
-      },
+    const participant = await db.$transaction(async (tx) => {
+      const updated = await tx.participant.update({
+        where: { id: Number(id) },
+        data,
+      });
+      await createAuditLog(
+        {
+          teamId: updated.teamId,
+          userId,
+          action: 'UPDATE',
+          entity: 'Participant',
+          entityId: updated.id,
+          description: `Participante actualizado: ${updated.name}`,
+          metadata: { before: currentParticipant, after: updated },
+          ipAddress: ip,
+        },
+        tx
+      );
+      return updated;
     });
 
     return ApiResponse.ok(participant);
@@ -108,30 +112,32 @@ export async function DELETE(
       return ApiResponse.notFound('Participant not found');
     }
 
-    // Validar acceso al equipo
-    const auth = await validateProtectedTeamRoute(request, db, participant.teamId);
+    // Validar acceso al equipo y permiso de eliminación
+    const auth = await validateProtectedTeamRouteWithMethod(request, db, participant.teamId, 'DELETE');
     if (!auth.authorized) {
       return ApiResponse.unauthorized(auth.error);
     }
 
     const userId = auth.userId;
+    const ip = getClientIp(request) ?? undefined;
 
-    // Crear log antes de eliminar
-    await db.auditLog.create({
-      data: {
-        teamId: participant.teamId,
-        userId: userId || null,
-        action: 'DELETE',
-        entity: 'Participant',
-        entityId: participant.id,
-        description: `Participante eliminado: ${participant.name}`,
-        metadata: JSON.stringify(participant),
-        ipAddress: getClientIp(request) || null,
-      },
-    });
-
-    await db.participant.delete({
-      where: { id: Number(id) }
+    await db.$transaction(async (tx) => {
+      await createAuditLog(
+        {
+          teamId: participant.teamId,
+          userId,
+          action: 'DELETE',
+          entity: 'Participant',
+          entityId: participant.id,
+          description: `Participante eliminado: ${participant.name}`,
+          metadata: participant,
+          ipAddress: ip,
+        },
+        tx
+      );
+      await tx.participant.delete({
+        where: { id: Number(id) },
+      });
     });
 
     return ApiResponse.ok({ success: true });

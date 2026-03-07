@@ -90,7 +90,14 @@ export function useApi() {
 
             if (refreshResponse.ok) {
               const refreshData = await refreshResponse.json();
-              const newAccessToken = refreshData.accessToken;
+              const newAccessToken = refreshData.data?.accessToken ?? refreshData.accessToken;
+
+              if (!newAccessToken) {
+                localStorage.removeItem('accessToken');
+                localStorage.removeItem('userId');
+                window.location.href = '/login';
+                return null;
+              }
 
               // Guardar nuevo token
               localStorage.setItem('accessToken', newAccessToken);
@@ -124,13 +131,16 @@ export function useApi() {
         }
 
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ message: 'Error desconocido' }));
-          throw new Error(errorData.message || `HTTP ${response.status}`);
+          const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+          throw new Error(errorData.error || errorData.message || `HTTP ${response.status}`);
         }
 
         const data = await response.json();
         setLoading(false);
-        return data;
+        // Desenvolver formato ApiResponse { success, data }
+        const unwrapped =
+          data != null && data.success === true && 'data' in data ? data.data : data;
+        return unwrapped as T;
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Error desconocido';
         setError(message);

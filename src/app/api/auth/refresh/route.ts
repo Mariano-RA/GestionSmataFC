@@ -2,17 +2,27 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { verifyRefreshToken, generateTokenPair } from '@/lib/jwt';
 import { db as prisma } from '@/lib/db';
+import { getClientIp } from '@/lib/auth';
+import { checkRefreshRateLimit, recordRefreshAttempt } from '@/lib/rateLimit';
+import { ApiResponse } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
 
 /**
  * POST /api/auth/refresh
- * 
- * Usa el refresh token de las cookies para generar un nuevo access token
- * El refresh token se envía automáticamente en las cookies del header
+ *
+ * Usa el refresh token de las cookies para generar un nuevo access token.
+ * Limitado por IP para evitar abuso.
  */
 export async function POST(request: NextRequest) {
   try {
-    // Obtener refresh token de las cookies
+    const ip = getClientIp(request);
+    const rateLimit = await checkRefreshRateLimit(ip ?? '');
+    if (!rateLimit.allowed) {
+      return ApiResponse.rateLimited(
+        `Demasiadas solicitudes. Reintente después de ${rateLimit.resetTime?.toLocaleTimeString('es-AR') ?? 'unos minutos'}.`
+      );
+    }
+
     const refreshToken = request.cookies.get('refreshToken')?.value;
 
     if (!refreshToken) {
@@ -84,9 +94,11 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    await recordRefreshAttempt(ip ?? '');
+
     const response = NextResponse.json({
       success: true,
-      accessToken,
+      data: { accessToken },
     });
 
     response.cookies.set('refreshToken', newRefreshToken, {

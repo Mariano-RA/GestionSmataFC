@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db as prisma } from '@/lib/db';
 import { validateRequestAuth, getClientIp } from '@/lib/auth';
+import { createAuditLog } from '@/lib/audit';
 import { updateTeamSchema } from '@/lib/schemas';
 import { ApiResponse } from '@/lib/api-response';
 
@@ -112,27 +113,31 @@ export async function PUT(
       );
     }
 
-    const team = await prisma.team.update({
-      where: { id: teamId },
-      data: {
-        ...(name !== undefined && { name: name.trim() }),
-        ...(description !== undefined && { description: description?.trim() || null }),
-        ...(active !== undefined && { active }),
-      },
-    });
+    const ip = getClientIp(request) ?? undefined;
 
-    // Crear log de auditoría
-    await prisma.auditLog.create({
-      data: {
-        teamId: team.id,
-        userId: userId || null,
-        action: 'UPDATE',
-        entity: 'Team',
-        entityId: team.id,
-        description: `Equipo actualizado: ${team.name}`,
-        metadata: JSON.stringify({ before: currentTeam, after: team }),
-        ipAddress: getClientIp(request) || null,
-      },
+    const team = await prisma.$transaction(async (tx) => {
+      const updated = await tx.team.update({
+        where: { id: teamId },
+        data: {
+          ...(name !== undefined && { name: name.trim() }),
+          ...(description !== undefined && { description: description?.trim() || null }),
+          ...(active !== undefined && { active }),
+        },
+      });
+      await createAuditLog(
+        {
+          teamId: updated.id,
+          userId,
+          action: 'UPDATE',
+          entity: 'Team',
+          entityId: updated.id,
+          description: `Equipo actualizado: ${updated.name}`,
+          metadata: { before: currentTeam, after: updated },
+          ipAddress: ip,
+        },
+        tx
+      );
+      return updated;
     });
 
     return NextResponse.json(team);
@@ -172,25 +177,27 @@ export async function DELETE(
       );
     }
 
-    // Crear log antes de eliminar
     const auth = validateRequestAuth(request);
-    const userId = auth.authorized ? auth.userId : null;
-    await prisma.auditLog.create({
-      data: {
-        teamId: team.id,
-        userId: userId || null,
-        action: 'DELETE',
-        entity: 'Team',
-        entityId: team.id,
-        description: `Equipo eliminado: ${team.name}`,
-        metadata: JSON.stringify(team),
-        ipAddress: getClientIp(request) || null,
-      },
-    });
+    const userId = auth.authorized ? auth.userId : undefined;
+    const ip = getClientIp(request) ?? undefined;
 
-    // Eliminar el equipo (cascade eliminará todo lo relacionado)
-    await prisma.team.delete({
-      where: { id: teamId },
+    await prisma.$transaction(async (tx) => {
+      await createAuditLog(
+        {
+          teamId: team.id,
+          userId,
+          action: 'DELETE',
+          entity: 'Team',
+          entityId: team.id,
+          description: `Equipo eliminado: ${team.name}`,
+          metadata: team,
+          ipAddress: ip,
+        },
+        tx
+      );
+      await tx.team.delete({
+        where: { id: teamId },
+      });
     });
 
     return NextResponse.json({ message: 'Equipo eliminado exitosamente' });

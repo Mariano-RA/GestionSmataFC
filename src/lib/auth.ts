@@ -1,6 +1,22 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { validateJWT, getUserIdFromJWT } from './jwt';
 import type { PrismaClient } from '@prisma/client';
+import {
+  canViewTeam,
+  canEditTeamData,
+  canDeleteTeamData,
+  type GlobalRole,
+  type TeamRole,
+} from './permissions';
+
+/**
+ * Autorización por rutas:
+ * - super_admin obligatorio: POST /api/teams, /api/admin/*, /api/users (gestión global).
+ * - validateProtectedTeamRouteWithMethod(teamId, method): /api/participants, /api/payments,
+ *   /api/expenses, /api/config. GET = canViewTeam (viewer o admin); POST/PATCH = canEditTeamData (admin);
+ *   DELETE = canDeleteTeamData (admin).
+ * - Solo JWT (acceso a equipos propios): GET /api/teams (lista equipos del usuario vía /api/auth/me).
+ */
 
 /**
  * Extrae el userId del contexto del request
@@ -167,6 +183,94 @@ export async function validateProtectedTeamRoute(
       userId: null,
       error: 'No tienes acceso a este equipo',
     };
+  }
+
+  return {
+    authorized: true,
+    userId,
+    error: null,
+  };
+}
+
+/** Método HTTP para distinguir lectura (solo viewer) vs escritura/borrado (solo admin) */
+export type TeamRouteMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
+
+/**
+ * Valida JWT, acceso al equipo y permiso según el método:
+ * - GET: puede ver (canViewTeam) — viewer o admin.
+ * - POST/PATCH: puede editar (canEditTeamData) — solo admin de equipo.
+ * - DELETE: puede eliminar (canDeleteTeamData) — solo admin de equipo.
+ * Usar en rutas de participantes, pagos, gastos y config.
+ */
+export async function validateProtectedTeamRouteWithMethod(
+  request: NextRequest,
+  db: PrismaClient,
+  teamId: number,
+  method: TeamRouteMethod
+): Promise<
+  | { authorized: true; userId: number; error: null }
+  | { authorized: false; userId: null; error: string }
+> {
+  const auth = validateRequestAuth(request);
+  if (!auth.authorized) {
+    return auth;
+  }
+
+  const userId = auth.userId;
+
+  const userTeam = await db.userTeam.findFirst({
+    where: {
+      userId,
+      teamId,
+      user: { active: true },
+      team: { active: true },
+    },
+    select: {
+      role: true,
+      user: { select: { globalRole: true } },
+    },
+  });
+
+  if (!userTeam) {
+    return {
+      authorized: false,
+      userId: null,
+      error: 'No tienes acceso a este equipo',
+    };
+  }
+
+  const globalRole = (userTeam.user.globalRole || 'user') as GlobalRole;
+  const teamRole = (userTeam.role || 'viewer') as TeamRole;
+
+  const canRead = canViewTeam(globalRole, teamRole);
+  const canWrite = canEditTeamData(globalRole, teamRole);
+  const canDelete = canDeleteTeamData(globalRole, teamRole);
+
+  if (method === 'GET') {
+    if (!canRead) {
+      return {
+        authorized: false,
+        userId: null,
+        error: 'No tienes permiso para ver este equipo',
+      };
+    }
+  } else if (method === 'DELETE') {
+    if (!canDelete) {
+      return {
+        authorized: false,
+        userId: null,
+        error: 'No tienes permiso para eliminar en este equipo',
+      };
+    }
+  } else {
+    // POST, PATCH
+    if (!canWrite) {
+      return {
+        authorized: false,
+        userId: null,
+        error: 'No tienes permiso para editar en este equipo',
+      };
+    }
   }
 
   return {

@@ -19,10 +19,6 @@ interface Team {
   };
 }
 
-interface AdminTeamsResponse {
-  data: Team[];
-}
-
 export default function AdminTeams() {
   const { request } = useApi();
   const [teams, setTeams] = useState<Team[]>([]);
@@ -41,12 +37,12 @@ export default function AdminTeams() {
   const loadTeams = async () => {
     try {
       setLoading(true);
-      const data = await request<AdminTeamsResponse>('/api/admin/teams', {
+      const data = await request<Team[]>('/api/admin/teams', {
         disableAutoParams: true,
       });
 
-      if (data?.data) {
-        setTeams(data.data);
+      if (data && Array.isArray(data)) {
+        setTeams(data);
       } else {
         throw new Error('Error al cargar equipos');
       }

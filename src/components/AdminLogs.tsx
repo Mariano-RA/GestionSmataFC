@@ -33,11 +33,9 @@ interface PaginationInfo {
   hasMore: boolean;
 }
 
-interface AdminLogsResponse {
-  data: {
-    logs: AuditLog[];
-    pagination: PaginationInfo;
-  };
+interface AdminLogsData {
+  logs: AuditLog[];
+  pagination: PaginationInfo;
 }
 
 export default function AdminLogs() {
@@ -79,13 +77,13 @@ export default function AdminLogs() {
       if (filters.startDate) params.append('startDate', filters.startDate);
       if (filters.endDate) params.append('endDate', filters.endDate);
 
-      const data = await request<AdminLogsResponse>(`/api/admin/logs?${params.toString()}`, {
+      const data = await request<AdminLogsData>(`/api/admin/logs?${params.toString()}`, {
         disableAutoParams: true,
       });
 
-      if (data?.data) {
-        setLogs(data.data.logs);
-        setPagination(data.data.pagination);
+      if (data?.logs && data?.pagination) {
+        setLogs(data.logs);
+        setPagination(data.pagination);
       } else {
         throw new Error('Error al cargar logs');
       }

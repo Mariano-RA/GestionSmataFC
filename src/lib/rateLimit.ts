@@ -1,13 +1,21 @@
 import { db } from './db';
 
 /**
- * Configuración del rate limiter
+ * Configuración del rate limiter (login)
  */
 const RATE_LIMIT_CONFIG = {
   maxAttempts: 5, // Máximo de intentos fallidos
   windowMinutes: 15, // Ventana de tiempo en minutos
   blockDurationMinutes: 15, // Duración del bloqueo después de exceder el límite
 };
+
+/** Rate limit para auth/refresh: máx solicitudes por IP por ventana */
+const REFRESH_RATE_LIMIT = {
+  maxPerWindow: 60,
+  windowMinutes: 15,
+};
+
+const REFRESH_RATE_LIMIT_EMAIL = '__rate_limit_refresh__';
 
 /**
  * Verifica si un email/IP está bloqueado por rate limiting
@@ -102,6 +110,73 @@ export async function clearLoginAttempts(email: string): Promise<void> {
     where: {
       email: email.toLowerCase().trim(),
       success: false,
+    },
+  });
+}
+
+/**
+ * Rate limit para POST /api/auth/refresh por IP.
+ * Usa la tabla LoginAttempt con email sentinel para no añadir tablas.
+ */
+export async function checkRefreshRateLimit(
+  ipAddress: string
+): Promise<{ allowed: boolean; resetTime?: Date }> {
+  if (!ipAddress) return { allowed: true };
+
+  const windowStart = new Date(
+    Date.now() - REFRESH_RATE_LIMIT.windowMinutes * 60 * 1000
+  );
+
+  const count = await db.loginAttempt.count({
+    where: {
+      email: REFRESH_RATE_LIMIT_EMAIL,
+      ipAddress,
+      createdAt: { gte: windowStart },
+    },
+  });
+
+  if (count >= REFRESH_RATE_LIMIT.maxPerWindow) {
+    const oldest = await db.loginAttempt.findFirst({
+      where: {
+        email: REFRESH_RATE_LIMIT_EMAIL,
+        ipAddress,
+        createdAt: { gte: windowStart },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+    const resetTime = oldest
+      ? new Date(
+          oldest.createdAt.getTime() +
+            REFRESH_RATE_LIMIT.windowMinutes * 60 * 1000
+        )
+      : new Date(Date.now() + REFRESH_RATE_LIMIT.windowMinutes * 60 * 1000);
+    return { allowed: false, resetTime };
+  }
+  return { allowed: true };
+}
+
+/**
+ * Registra un intento de refresh (para rate limit por IP).
+ */
+export async function recordRefreshAttempt(ipAddress: string): Promise<void> {
+  if (!ipAddress) return;
+
+  await db.loginAttempt.create({
+    data: {
+      email: REFRESH_RATE_LIMIT_EMAIL,
+      success: true,
+      ipAddress,
+      userAgent: null,
+    },
+  });
+
+  const windowStart = new Date(
+    Date.now() - REFRESH_RATE_LIMIT.windowMinutes * 60 * 1000
+  );
+  await db.loginAttempt.deleteMany({
+    where: {
+      email: REFRESH_RATE_LIMIT_EMAIL,
+      createdAt: { lt: windowStart },
     },
   });
 }

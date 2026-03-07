@@ -69,9 +69,7 @@ interface AdminStatsData {
   actionsByEntity?: ActionByEntity[];
 }
 
-interface AdminStatsResponse {
-  data: AdminStatsData;
-}
+/** useApi devuelve ya el .data del API (objeto de stats), no el envoltorio */
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -99,12 +97,12 @@ export default function AdminDashboard() {
   const loadStats = async () => {
     try {
       setLoadingStats(true);
-      const data = await request<AdminStatsResponse>('/api/admin/stats', {
+      const data = await request<AdminStatsData>('/api/admin/stats', {
         disableAutoParams: true,
       });
 
-      if (data?.data) {
-        setStats(data.data);
+      if (data) {
+        setStats(data);
       } else {
         throw new Error('Error al cargar estadísticas');
       }

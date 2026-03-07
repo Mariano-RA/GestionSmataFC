@@ -32,18 +32,6 @@ interface Team {
   name: string;
 }
 
-interface AssignmentsResponse {
-  data: UserTeamAssignment[];
-}
-
-interface UsersResponse {
-  data: User[];
-}
-
-interface TeamsResponse {
-  data: Team[];
-}
-
 export default function AdminUserTeams() {
   const { request } = useApi();
   const [assignments, setAssignments] = useState<UserTeamAssignment[]>([]);
@@ -67,12 +55,12 @@ export default function AdminUserTeams() {
 
   const loadAssignments = async () => {
     try {
-      const data = await request<AssignmentsResponse>('/api/admin/user-teams', {
+      const data = await request<UserTeamAssignment[]>('/api/admin/user-teams', {
         disableAutoParams: true,
       });
 
-      if (data?.data) {
-        setAssignments(data.data);
+      if (data && Array.isArray(data)) {
+        setAssignments(data);
       } else {
         throw new Error('Error al cargar asignaciones');
       }
@@ -84,12 +72,12 @@ export default function AdminUserTeams() {
 
   const loadUsers = async () => {
     try {
-      const data = await request<UsersResponse>('/api/admin/users', {
+      const data = await request<User[]>('/api/admin/users', {
         disableAutoParams: true,
       });
 
-      if (data?.data) {
-        setUsers(data.data);
+      if (data && Array.isArray(data)) {
+        setUsers(data);
       }
     } catch (error) {
       logger.error('Error loading users for assignment', error);
@@ -98,12 +86,12 @@ export default function AdminUserTeams() {
 
   const loadTeams = async () => {
     try {
-      const data = await request<TeamsResponse>('/api/admin/teams', {
+      const data = await request<Team[]>('/api/admin/teams', {
         disableAutoParams: true,
       });
 
-      if (data?.data) {
-        setTeams(data.data);
+      if (data && Array.isArray(data)) {
+        setTeams(data);
       }
     } catch (error) {
       logger.error('Error loading teams for assignment', error);

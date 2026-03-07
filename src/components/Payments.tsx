@@ -79,7 +79,12 @@ export default function Payments({
 
   const allMonthPayments = payments
     .filter(p => p.date.startsWith(currentMonth))
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    .sort((a, b) => {
+      const dateA = new Date(a.date).getTime();
+      const dateB = new Date(b.date).getTime();
+      if (dateB !== dateA) return dateB - dateA;
+      return (b.id ?? 0) - (a.id ?? 0);
+    });
 
   const recentPayments = allMonthPayments.slice(0, 5);
   const [filterType, setFilterType] = useState<'recent' | 'all'>('recent');

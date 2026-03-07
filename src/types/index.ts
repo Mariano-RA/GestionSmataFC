@@ -1,3 +1,9 @@
+/**
+ * Tipos de dominio para el frontend.
+ * Deben mantenerse alineados con prisma/schema.prisma: mismos campos y relaciones.
+ * Las fechas se usan como string (ISO) por serialización JSON; en Prisma son DateTime.
+ */
+
 export interface Team {
   id: number;
   name: string;
@@ -75,6 +81,7 @@ export interface Expense {
   recordedAt: string;
 }
 
+/** Contrato de configuración global (GET /api/config sin month). */
 export interface AppConfig {
   monthlyTarget: number;
   fieldRental: number;
@@ -82,11 +89,18 @@ export interface AppConfig {
   notes: string;
 }
 
+/** Config mensual en BD (rent). La API puede devolver fieldRental como alias. */
 export interface MonthlyConfig {
   teamId: number;
   month: string;
   monthlyTarget: number;
   rent: number;
+}
+
+/** Respuesta de GET /api/config?month=YYYY-MM: siempre incluye fieldRental para unificar con AppConfig. */
+export interface MonthlyConfigResponse extends Omit<MonthlyConfig, 'rent'> {
+  fieldRental: number;
+  rent?: number;
 }
 
 export interface ParticipantStats {

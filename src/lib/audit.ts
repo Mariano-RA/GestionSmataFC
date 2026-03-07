@@ -1,5 +1,6 @@
 import { db } from './db';
 import { Prisma } from '@prisma/client';
+import type { PrismaClient } from '@prisma/client';
 
 export interface CreateAuditLogParams {
   teamId?: number;
@@ -12,12 +13,17 @@ export interface CreateAuditLogParams {
   ipAddress?: string;
 }
 
+/** Cliente Prisma (db o tx dentro de $transaction) para escribir el log */
+type PrismaClientLike = Pick<PrismaClient, 'auditLog'>;
+
 /**
- * Crea un log de auditoría
+ * Crea un log de auditoría. Puede usarse dentro de una transacción pasando el cliente tx.
  * @param params Parámetros del log
+ * @param tx Cliente de transacción opcional (si se llama desde db.$transaction)
  * @returns El log creado
  */
-export async function createAuditLog(params: CreateAuditLogParams) {
+export async function createAuditLog(params: CreateAuditLogParams, tx?: PrismaClientLike) {
+  const client = (tx ?? db) as PrismaClient;
   const {
     teamId,
     userId,
@@ -29,16 +35,16 @@ export async function createAuditLog(params: CreateAuditLogParams) {
     ipAddress,
   } = params;
 
-  return await db.auditLog.create({
+  return await client.auditLog.create({
     data: {
-      teamId: teamId || null,
-      userId: userId || null,
+      teamId: teamId ?? null,
+      userId: userId ?? null,
       action,
       entity,
-      entityId: entityId || null,
+      entityId: entityId ?? null,
       description,
-      metadata: metadata ? JSON.stringify(metadata) : null,
-      ipAddress: ipAddress || null,
+      metadata: metadata != null ? JSON.stringify(metadata) : null,
+      ipAddress: ipAddress ?? null,
     },
   });
 }
@@ -96,23 +102,8 @@ export async function getAuditLogs({
   return { logs, total, limit, offset };
 }
 
-/**
- * Obtiene la IP del request (útil para logs)
- */
-export function getClientIp(request: Request): string | undefined {
-  const forwarded = request.headers.get('x-forwarded-for');
-  const realIp = request.headers.get('x-real-ip');
-  
-  if (forwarded) {
-    return forwarded.split(',')[0].trim();
-  }
-  
-  if (realIp) {
-    return realIp.trim();
-  }
-  
-  return undefined;
-}
+/** Reexportar getClientIp desde auth para no duplicar lógica (audit lo usa en login/logout) */
+export { getClientIp } from './auth';
 
 /**
  * Formatea metadatos para comparación antes/después
