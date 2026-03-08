@@ -305,7 +305,7 @@ export default function Settings({
 
       <hr style={{ margin: '20px 0', borderColor: 'var(--border)' }} />
 
-      <h3 style={{ color: 'var(--primary)', marginBottom: '15px' }}>💾 Copias de Seguridad</h3>
+      <h3 style={{ color: 'var(--heading)', marginBottom: '15px' }}>💾 Copias de Seguridad</h3>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
         <button className="btn btn-secondary" onClick={onExport}>
           📥 Descargar BD

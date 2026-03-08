@@ -170,7 +170,7 @@ export default function AdminUserTeams() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--primary)' }}>🔗 Asignaciones Usuario-Equipo</h2>
+        <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--heading)' }}>🔗 Asignaciones Usuario-Equipo</h2>
         <button onClick={() => setShowForm(true)} className="btn-primary" style={{ padding: '8px 16px', fontSize: '14px', width: 'auto' }}>
           ➕ Asignar
         </button>
@@ -178,7 +178,7 @@ export default function AdminUserTeams() {
 
       {showForm && (
         <div style={{ background: 'var(--bg-primary)', padding: '15px', borderRadius: '8px', border: '1px solid var(--border)' }}>
-          <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--primary)', marginBottom: '12px' }}>Asignar Usuario</h3>
+          <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--heading)', marginBottom: '12px' }}>Asignar Usuario</h3>
           <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
             <select value={formData.userId} onChange={(e) => setFormData({ ...formData, userId: e.target.value })} style={{ padding: '8px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--text)' }} required>
               <option value="">Usuario...</option>

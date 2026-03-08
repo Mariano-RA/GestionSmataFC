@@ -49,6 +49,8 @@ export interface AuditLog {
   team?: Team;
 }
 
+export type ParticipantStatus = 'activo' | 'sin_laburo' | 'lesionado';
+
 export interface Participant {
   id: number;
   teamId: number;
@@ -56,6 +58,7 @@ export interface Participant {
   phone?: string;
   notes?: string;
   active: boolean;
+  status?: ParticipantStatus | null;
   joinDate: string;
   createdAt: string;
 }

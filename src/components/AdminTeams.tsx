@@ -141,7 +141,7 @@ export default function AdminTeams() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--primary)' }}>⚽ Gestión de Equipos</h2>
+        <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--heading)' }}>⚽ Gestión de Equipos</h2>
         <button onClick={() => setShowForm(true)} className="btn-primary" style={{ padding: '8px 16px', fontSize: '14px', width: 'auto' }}>
           ➕ Nuevo
         </button>
@@ -150,7 +150,7 @@ export default function AdminTeams() {
       {/* Form */}
       {showForm && (
         <div style={{ background: 'var(--bg-primary)', padding: '15px', borderRadius: '8px', border: '1px solid var(--border)' }}>
-          <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--primary)', marginBottom: '12px' }}>
+          <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--heading)', marginBottom: '12px' }}>
             {editingTeam ? '✏️ Editar Equipo' : '➕ Crear Equipo'}
           </h3>
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -190,19 +190,19 @@ export default function AdminTeams() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px', padding: '10px', background: 'var(--bg-secondary)', borderRadius: '6px' }}>
                 <div style={{ fontSize: '12px' }}>
                   <p style={{ color: 'var(--text-secondary)' }}>Participantes</p>
-                  <p style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--primary)' }}>{team._count?.participants || 0}</p>
+                  <p style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--heading)' }}>{team._count?.participants || 0}</p>
                 </div>
                 <div style={{ fontSize: '12px' }}>
                   <p style={{ color: 'var(--text-secondary)' }}>Admins</p>
-                  <p style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--primary)' }}>{team._count?.userTeams || 0}</p>
+                  <p style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--heading)' }}>{team._count?.userTeams || 0}</p>
                 </div>
                 <div style={{ fontSize: '12px' }}>
                   <p style={{ color: 'var(--text-secondary)' }}>Pagos</p>
-                  <p style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--primary)' }}>{team._count?.payments || 0}</p>
+                  <p style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--heading)' }}>{team._count?.payments || 0}</p>
                 </div>
                 <div style={{ fontSize: '12px' }}>
                   <p style={{ color: 'var(--text-secondary)' }}>Gastos</p>
-                  <p style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--primary)' }}>{team._count?.expenses || 0}</p>
+                  <p style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--heading)' }}>{team._count?.expenses || 0}</p>
                 </div>
               </div>
 

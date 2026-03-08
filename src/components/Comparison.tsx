@@ -29,7 +29,7 @@ export default function Comparison({
   return (
     <div className="tab-content">
       <div style={{ marginBottom: '15px' }}>
-        <h3 style={{ marginBottom: '10px', color: 'var(--primary)' }}>Seleccionar Mes</h3>
+        <h3 style={{ marginBottom: '10px', color: 'var(--heading)' }}>Seleccionar Mes</h3>
         <div style={{ overflowX: 'auto', display: 'flex', gap: '8px', marginBottom: '15px' }}>
           {allMonths.slice(-6).map(month => (
             <button
@@ -63,7 +63,7 @@ export default function Comparison({
       </div>
 
       <div style={{ background: 'var(--bg-primary)', padding: '15px', borderRadius: '8px', marginTop: '20px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', border: '1px solid var(--border)', color: 'var(--text)' }}>
-        <h3 style={{ marginBottom: '15px', color: 'var(--primary)' }}>Detalle</h3>
+        <h3 style={{ marginBottom: '15px', color: 'var(--heading)' }}>Detalle</h3>
         <p>📊 Mes: <strong>{getMonthName(selectedMonth)}</strong></p>
         <p>💰 Recaudado: <strong>{formatCurrency(collected)}</strong></p>
         <p>💸 Gastos: <strong>{formatCurrency(totalExpenses)}</strong></p>

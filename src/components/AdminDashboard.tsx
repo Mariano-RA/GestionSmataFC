@@ -124,7 +124,7 @@ export default function AdminDashboard() {
         {/* Header */}
         <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
           <div>
-            <h1 style={{ fontSize: '28px', fontWeight: 'bold', color: 'var(--primary)', marginBottom: '8px' }}>
+            <h1 style={{ fontSize: '28px', fontWeight: 'bold', color: 'var(--heading)', marginBottom: '8px' }}>
               🔧 Panel de Administración
             </h1>
             <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
@@ -169,7 +169,7 @@ export default function AdminDashboard() {
           {/* Dashboard Tab */}
           {activeTab === 'dashboard' && (
             <div>
-              <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--primary)', marginBottom: '20px' }}>
+              <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--heading)', marginBottom: '20px' }}>
                 📊 Resumen del Sistema
               </h2>
 
@@ -189,7 +189,7 @@ export default function AdminDashboard() {
 
                   {/* Top Users */}
                   <div style={{ background: 'var(--bg-secondary)', padding: '15px', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                    <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--primary)', marginBottom: '12px' }}>👥 Usuarios Más Activos</h3>
+                    <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--heading)', marginBottom: '12px' }}>👥 Usuarios Más Activos</h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       {stats.mostActiveUsers?.slice(0, 5).map((user) => (
                         <div key={user.userId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px', background: 'var(--bg-primary)', borderRadius: '6px' }}>
@@ -207,7 +207,7 @@ export default function AdminDashboard() {
 
                   {/* Recent Actions */}
                   <div style={{ background: 'var(--bg-secondary)', padding: '15px', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                    <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--primary)', marginBottom: '12px' }}>⚡ Últimas Acciones</h3>
+                    <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--heading)', marginBottom: '12px' }}>⚡ Últimas Acciones</h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       {stats.recentActions?.slice(0, 10).map((action) => (
                         <div key={action.id} style={{ padding: '8px', background: 'var(--bg-primary)', borderRadius: '6px', fontSize: '12px' }}>
@@ -254,7 +254,7 @@ function StatCard({
       <h3 style={{ fontSize: '12px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '8px' }}>
         {title}
       </h3>
-      <div className="value" style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--primary)', marginBottom: '4px' }}>
+      <div className="value" style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--heading)', marginBottom: '4px' }}>
         {value}
       </div>
       <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{subtitle}</p>

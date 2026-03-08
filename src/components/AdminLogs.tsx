@@ -132,11 +132,11 @@ export default function AdminLogs() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-      <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--primary)' }}>📋 Registro de Auditoría</h2>
+      <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--heading)' }}>📋 Registro de Auditoría</h2>
 
       {/* Filters */}
       <div style={{ background: 'var(--bg-primary)', padding: '15px', borderRadius: '8px', border: '1px solid var(--border)' }}>
-        <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--primary)', marginBottom: '12px' }}>🔍 Filtros</h3>
+        <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--heading)', marginBottom: '12px' }}>🔍 Filtros</h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '10px', marginBottom: '10px' }}>
           <input type="text" placeholder="Usuario ID" value={filters.userId} onChange={(e) => handleFilterChange('userId', e.target.value)} style={{ padding: '6px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--text)', fontSize: '12px' }}/>
           <input type="text" placeholder="Equipo ID" value={filters.teamId} onChange={(e) => handleFilterChange('teamId', e.target.value)} style={{ padding: '6px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--text)', fontSize: '12px' }}/>

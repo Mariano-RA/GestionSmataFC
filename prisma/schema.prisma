@@ -92,9 +92,10 @@ model Participant {
   name      String
   phone     String?
   notes     String?
-  active    Boolean @default(true)
+  active    Boolean  @default(true)
+  status    String?  @default("activo") // activo | sin_laburo | lesionado
   joinDate  DateTime @default(now())
-  team      Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   payments  Payment[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

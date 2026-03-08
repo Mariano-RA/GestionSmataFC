@@ -214,7 +214,7 @@ export default function LoginPage() {
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
           <h1 style={{
             margin: '0 0 8px 0',
-            color: 'var(--primary)',
+            color: 'var(--heading)',
             fontSize: '32px',
             fontWeight: '700',
             letterSpacing: '-0.5px',
@@ -352,7 +352,7 @@ export default function LoginPage() {
                   transition: 'color 0.2s ease',
                   opacity: loading ? 0.5 : 1,
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--primary)')}
+                onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--heading)')}
                 onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-secondary)')}
               >
                 {showPassword ? '👁️' : '👁️‍🗨️'}

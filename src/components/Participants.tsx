@@ -2,15 +2,21 @@
 
 import { useState } from 'react';
 import { normalizeName } from '@/lib/utils';
-import type { Participant, Payment } from '@/types';
+import type { Participant, Payment, ParticipantStatus } from '@/types';
+
+const STATUS_LABELS: Record<ParticipantStatus, string> = {
+  activo: 'Activo (cuota completa)',
+  sin_laburo: 'Sin laburo (no paga)',
+  lesionado: 'Lesionado (mitad de cuota)',
+};
 
 interface ParticipantsProps {
   participants: Participant[];
   payments: Payment[];
-  monthlyShare: number;
   currentMonth: string;
-  onAdd: (name: string, phone: string, notes: string) => void;
-  onUpdate: (id: number, name: string, phone: string, notes: string) => void;
+  getRequiredAmount: (p: Participant) => number;
+  onAdd: (name: string, phone: string, notes: string, status?: ParticipantStatus) => void;
+  onUpdate: (id: number, name: string, phone: string, notes: string, status?: ParticipantStatus | null) => void;
   onRemove: (id: number) => void;
   onToggle: (id: number) => void;
   onShowHistory: (id: number, name: string) => void;
@@ -19,8 +25,8 @@ interface ParticipantsProps {
 export default function Participants({
   participants,
   payments,
-  monthlyShare,
   currentMonth,
+  getRequiredAmount,
   onAdd,
   onUpdate,
   onRemove,
@@ -32,6 +38,7 @@ export default function Participants({
   const [newName, setNewName] = useState('');
   const [newPhone, setNewPhone] = useState('');
   const [newNotes, setNewNotes] = useState('');
+  const [newStatus, setNewStatus] = useState<ParticipantStatus>('activo');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [showModal, setShowModal] = useState(false);
 
@@ -40,6 +47,7 @@ export default function Participants({
     setNewName('');
     setNewPhone('');
     setNewNotes('');
+    setNewStatus('activo');
     setShowModal(true);
   };
 
@@ -53,7 +61,7 @@ export default function Participants({
       return;
     }
     try {
-      await onAdd(normalizeName(newName), newPhone, newNotes);
+      await onAdd(normalizeName(newName), newPhone, newNotes, newStatus);
       closeModal();
       setNewName('');
       setNewPhone('');
@@ -68,7 +76,7 @@ export default function Participants({
       return;
     }
     try {
-      await onUpdate(editingId, normalizeName(newName), newPhone, newNotes);
+      await onUpdate(editingId, normalizeName(newName), newPhone, newNotes, newStatus);
       closeModal();
       setEditingId(null);
       setNewName('');
@@ -84,6 +92,7 @@ export default function Participants({
     setNewName(p.name);
     setNewPhone(p.phone || '');
     setNewNotes(p.notes || '');
+    setNewStatus((p.status as ParticipantStatus) || 'activo');
     setShowModal(true);
   };
 
@@ -132,8 +141,9 @@ export default function Participants({
           const paid = payments
             .filter(pay => pay.participantId === p.id && pay.date.startsWith(currentMonth))
             .reduce((sum, pay) => sum + pay.amount, 0);
-          const balance = paid - monthlyShare;
-          const statusClass = balance >= 0 ? 'success' : balance > -monthlyShare * 0.3 ? 'warning' : 'danger';
+          const required = getRequiredAmount(p);
+          const balance = paid - required;
+          const statusClass = balance >= 0 ? 'success' : balance > -required * 0.3 ? 'warning' : 'danger';
 
           return (
             <div key={p.id} className={`card ${statusClass} ${p.active ? 'active-participant' : 'inactive-participant'}`}>
@@ -143,15 +153,20 @@ export default function Participants({
                     {p.active ? '✓' : '○'}
                   </span>{' '}
                   <strong>{normalizeName(p.name)}</strong>
+                  {p.status && p.status !== 'activo' && (
+                    <span style={{ fontSize: '11px', marginLeft: '6px', opacity: 0.9 }}>
+                      ({STATUS_LABELS[p.status as ParticipantStatus]})
+                    </span>
+                  )}
                 </span>
                 <span className={`badge ${balance >= 0 ? 'success' : 'danger'}`}>
                   {balance >= 0 ? '+' : ''} ${balance.toLocaleString('es-AR')}
                 </span>
               </div>
-              {p.phone && <p style={{ fontSize: '12px', color: '#999' }}>{p.phone}</p>}
+              {p.phone && <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{p.phone}</p>}
               {p.notes && <p style={{ fontSize: '12px', color: '#888', fontStyle: 'italic', marginBottom: '6px' }}>📝 {p.notes}</p>}
-              <p style={{ fontSize: '13px', color: '#666', marginBottom: '8px' }}>
-                Pagado: ${paid.toLocaleString('es-AR')} / Requerido: ${monthlyShare.toLocaleString('es-AR')}
+              <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                Pagado: ${paid.toLocaleString('es-AR')} / Requerido: ${required.toLocaleString('es-AR')}
               </p>
               <div className="card-actions btn-group">
                 <button
@@ -203,6 +218,18 @@ export default function Participants({
               value={newPhone}
               onChange={e => setNewPhone(e.target.value)}
             />
+          </div>
+          <div className="form-group">
+            <label>Estado (afecta la cuota)</label>
+            <select
+              value={newStatus}
+              onChange={e => setNewStatus(e.target.value as ParticipantStatus)}
+              style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text)', width: '100%' }}
+            >
+              {(Object.keys(STATUS_LABELS) as ParticipantStatus[]).map(s => (
+                <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+              ))}
+            </select>
           </div>
           <div className="form-group">
             <label>Notas (opcional)</label>

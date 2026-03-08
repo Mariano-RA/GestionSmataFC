@@ -56,6 +56,7 @@ export default function Home() {
     dataLoading,
     monthlyObjective,
     monthlyShare,
+    getRequiredAmount,
     handleAddParticipant,
     handleRemoveParticipant,
     handleUpdateParticipant,
@@ -209,6 +210,7 @@ export default function Home() {
             payments={payments}
             expenses={expenses}
             config={config}
+            getRequiredAmount={getRequiredAmount}
           />
         )}
 
@@ -216,8 +218,8 @@ export default function Home() {
           <Participants
             participants={participants}
             payments={payments}
-            monthlyShare={monthlyShare}
             currentMonth={currentMonth}
+            getRequiredAmount={getRequiredAmount}
             onAdd={handleAddParticipant}
             onUpdate={handleUpdateParticipant}
             onRemove={handleRemoveParticipant}
@@ -254,7 +256,7 @@ export default function Home() {
           <Debtors
             participants={participants}
             payments={payments}
-            monthlyShare={monthlyShare}
+            getRequiredAmount={getRequiredAmount}
             currentMonth={currentMonth}
             addToast={addToast}
           />

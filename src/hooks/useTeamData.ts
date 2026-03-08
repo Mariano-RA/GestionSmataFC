@@ -96,16 +96,29 @@ export function useTeamData(
     }
   }, [currentMonth, currentTeamId, globalConfig]);
 
-  const activeParticipants = participants.filter(p => p.active).length || 1;
   const monthlyObjective = (config.monthlyTarget || 0) + (config.fieldRental || 0);
-  const monthlyShare = monthlyObjective / activeParticipants;
+  const effectiveParticipants = participants
+    .filter(p => p.active)
+    .reduce((sum, p) => sum + (p.status === 'sin_laburo' ? 0 : p.status === 'lesionado' ? 0.5 : 1), 0) || 1;
+  const monthlyShare = monthlyObjective / effectiveParticipants;
+  const activeParticipants = participants.filter(p => p.active).length || 1;
+
+  const getRequiredAmount = useCallback(
+    (p: Participant): number => {
+      if (!p.active) return 0;
+      if (p.status === 'sin_laburo') return 0;
+      if (p.status === 'lesionado') return monthlyShare / 2;
+      return monthlyShare;
+    },
+    [monthlyShare]
+  );
 
   const handleAddParticipant = useCallback(
-    async (name: string, phone: string, notes: string) => {
+    async (name: string, phone: string, notes: string, status?: string) => {
       try {
         const res = await request<Participant>('/api/participants', {
           method: 'POST',
-          body: { name, phone, notes },
+          body: { name, phone, notes, status: status || 'activo' },
         });
         if (res != null) {
           addToast('Participante agregado', 'success');
@@ -137,11 +150,11 @@ export function useTeamData(
   );
 
   const handleUpdateParticipant = useCallback(
-    async (id: number, name: string, phone: string, notes: string) => {
+    async (id: number, name: string, phone: string, notes: string, status?: string | null) => {
       try {
         const res = await request<Participant>(`/api/participants/${id}`, {
           method: 'PATCH',
-          body: { name, phone, notes },
+          body: { name, phone, notes, status: status ?? undefined },
         });
         if (res != null) {
           addToast('Participante actualizado', 'success');
@@ -318,6 +331,8 @@ export function useTeamData(
     activeParticipants,
     monthlyObjective,
     monthlyShare,
+    getRequiredAmount,
+    effectiveParticipants,
     handleAddParticipant,
     handleRemoveParticipant,
     handleUpdateParticipant,

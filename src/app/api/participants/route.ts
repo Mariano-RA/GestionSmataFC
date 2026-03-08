@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
       return ApiResponse.fromZodError(validation.error);
     }
 
-    const { teamId, name, phone, notes } = validation.data;
+    const { teamId, name, phone, notes, status } = validation.data;
 
     // Validar autenticación, acceso al equipo y permiso de escritura
     const auth = await validateProtectedTeamRouteWithMethod(request, db, teamId, 'POST');
@@ -82,6 +82,7 @@ export async function POST(request: NextRequest) {
           name,
           phone: phone || null,
           notes: notes || null,
+          status: status || 'activo',
         },
       });
       await createAuditLog(

@@ -119,7 +119,7 @@ export default function Expenses({
         </button>
       </div>
 
-      <h3 style={{ marginTop: '20px', marginBottom: '10px', color: 'var(--primary)' }}>
+      <h3 style={{ marginTop: '20px', marginBottom: '10px', color: 'var(--heading)' }}>
         Gastos del Mes {filterCategory !== 'Todos' && `- ${filterCategory}`}
       </h3>
       <div id="expensesList">
@@ -136,7 +136,7 @@ export default function Expenses({
                 <span style={{ fontSize: '11px', background: 'var(--secondary)', color: 'var(--text)', padding: '2px 8px', borderRadius: '3px', marginLeft: '8px' }}>
                   {e.category}
                 </span>
-                <span style={{ fontSize: '12px', color: '#999', marginLeft: '8px' }}>
+                <span style={{ fontSize: '12px', color: 'var(--text-secondary)', marginLeft: '8px' }}>
                   {new Date(e.date).toLocaleDateString('es-AR')}
                 </span>
               </span>

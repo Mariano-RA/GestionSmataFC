@@ -157,7 +157,7 @@ export default function AdminUsers() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--primary)' }}>👥 Gestión de Usuarios</h2>
+        <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--heading)' }}>👥 Gestión de Usuarios</h2>
         <button
           onClick={() => setShowForm(true)}
           className="btn-primary"
@@ -170,7 +170,7 @@ export default function AdminUsers() {
       {/* Form */}
       {showForm && (
         <div style={{ background: 'var(--bg-primary)', padding: '15px', borderRadius: '8px', border: '1px solid var(--border)' }}>
-          <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--primary)', marginBottom: '12px' }}>
+          <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--heading)', marginBottom: '12px' }}>
             {editingUser ? '✏️ Editar Usuario' : '➕ Crear Usuario'}
           </h3>
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>

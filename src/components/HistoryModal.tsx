@@ -57,14 +57,14 @@ export default function HistoryModal({
         </div>
         
         {payments.length === 0 ? (
-          <p style={{ textAlign: 'center', color: '#999' }}>Sin pagos</p>
+          <p style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>Sin pagos</p>
         ) : (
           <div>
             {payments.map(p => (
               <div key={p.id} className="list-item" style={{ marginBottom: '10px' }}>
                 <div>
                   <strong>{new Date(p.date).toLocaleDateString('es-AR')}</strong>
-                  <p style={{ fontSize: '12px', color: '#999', marginTop: '4px' }}>
+                  <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
                     {p.note || 'Sin notas'}
                   </p>
                 </div>

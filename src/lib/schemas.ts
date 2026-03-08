@@ -53,11 +53,14 @@ export type UpdateTeamRequest = z.infer<typeof updateTeamSchema>;
 
 // ==================== PARTICIPANT SCHEMAS ====================
 
+const participantStatusSchema = z.enum(['activo', 'sin_laburo', 'lesionado']).optional().default('activo');
+
 export const createParticipantSchema = z.object({
   teamId: z.coerce.number().int().positive('Team ID requerido'),
   name: z.string('Nombre requerido').min(2, 'Nombre muy corto'),
   phone: z.string().optional(),
   notes: z.string().optional(),
+  status: participantStatusSchema,
 });
 
 export type CreateParticipantRequest = z.infer<typeof createParticipantSchema>;
@@ -67,6 +70,7 @@ export const updateParticipantSchema = z.object({
   phone: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
   active: z.boolean().optional(),
+  status: z.enum(['activo', 'sin_laburo', 'lesionado']).nullable().optional(),
 });
 
 export type UpdateParticipantRequest = z.infer<typeof updateParticipantSchema>;
@@ -158,6 +162,7 @@ const importParticipantSchema = z.object({
   phone: z.string().optional(),
   notes: z.string().optional(),
   active: z.boolean().optional(),
+  status: z.enum(['activo', 'sin_laburo', 'lesionado']).optional(),
 });
 
 const importPaymentSchema = z.object({

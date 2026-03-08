@@ -1,27 +1,38 @@
 :root {
-  --primary: #1a472a;
-  --primary-light: #2a5c3a;
-  --secondary: #2ecc71;
-  --danger: #e74c3c;
-  --warning: #f39c12;
+  /* Belgium Theme 🇧🇪 */
+  --primary: #2d2d2d; /* Dark grey (aclarado desde #111 para mejor lectura de títulos y texto) */
+  --primary-light: #454545; /* Grey para hover/estados */
+  --primary-contrast: #ffffff; /* White text on primary bg */
+  --primary-active: #1a1a1a; /* Más oscuro para estado activo */
+  --secondary: #FDDA24; /* Belgian Yellow */
+  --danger: #E30613; /* Belgian Red */
+  --warning: #FDDA24;
   --success: #27ae60;
   --light: #ecf0f1;
-  --dark: #2c3e50;
+  --dark: #1a1a1a;
   --border: #bdc3c7;
   --bg-primary: #ffffff;
   --bg-secondary: #f5f5f5;
-  --text: #2c3e50;
-  --text-secondary: #7f8c8d;
+  --text: #1e1e1e; /* Texto principal algo más suave que negro puro */
+  --text-secondary: #5a5a5a; /* Aclarado desde #555 para mejor lectura */
+  --primary-text: #1e1e1e; /* Texto de métricas en modo claro */
+  --heading: #2d2d2d; /* Títulos y etiquetas (mismo que primary en claro) */
 }
 
 :root.dark-mode {
+  --primary: #2C2C2C; /* Sleek dark grey for dark mode primary */
+  --primary-light: #3D3D3D;
+  --primary-contrast: #ffffff; /* White text on dark grey bg */
+  --primary-active: #1A1A1A; /* Even darker black */
   --light: #1a1a1a;
   --dark: #e0e0e0;
-  --border: #444444;
+  --border: #888888; /* Lighter grey for elements like month labels previously hiding in dark mode */
   --bg-primary: #1e1e1e;
   --bg-secondary: #2d2d2d;
   --text: #e0e0e0;
-  --text-secondary: #a0a0a0;
+  --text-secondary: #d1d5db; /* Brighter grey for readability */
+  --primary-text: #ffffff; /* Bright text for metrics in dark mode */
+  --heading: #b8b8b8; /* Títulos más claros en modo nocturno (gris legible) */
 }
 
 * {
@@ -41,7 +52,7 @@ body {
 
 .header {
   background: var(--primary);
-  color: white;
+  color: var(--primary-contrast);
   padding: 20px;
   text-align: center;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -133,8 +144,8 @@ body {
 
 .header-admin-btn {
   padding: 8px 12px;
-  background: #6366f1;
-  color: white;
+  background: var(--secondary);
+  color: #111111;
   border: none;
   border-radius: 6px;
   font-size: 12px;
@@ -217,7 +228,7 @@ body {
 .stat-card .value {
   font-size: 20px;
   font-weight: bold;
-  color: var(--primary);
+  color: var(--primary-text);
 }
 
 .stat-card.warning .value {
@@ -281,7 +292,7 @@ body {
 
 .tab-btn.active {
   background: var(--primary);
-  color: white;
+  color: var(--primary-contrast);
 }
 
 .tab-content {
@@ -340,11 +351,11 @@ select:focus {
 
 .btn-primary {
   background: var(--primary);
-  color: white;
+  color: var(--primary-contrast);
 }
 
 .btn-primary:active {
-  background: #0d2a1b;
+  background: var(--primary-active);
 }
 
 .btn-secondary {
@@ -496,8 +507,8 @@ select:focus {
 
 .alert-info {
   background: rgba(26, 71, 42, 0.1);
-  color: var(--primary);
-  border: 1px solid var(--primary);
+  color: var(--heading);
+  border: 1px solid var(--heading);
 }
 
 .alert-danger {
@@ -623,7 +634,7 @@ select:focus {
 }
 
 .nav-item.active {
-  color: var(--primary);
+  color: var(--heading);
 }
 
 .nav-icon {
@@ -654,7 +665,7 @@ select:focus {
 .comparison-value {
   font-size: 24px;
   font-weight: bold;
-  color: var(--primary);
+  color: var(--primary-text);
 }
 
 .month-btn {

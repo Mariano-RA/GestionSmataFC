@@ -105,7 +105,7 @@ export default function Header() {
           {user.teams.length === 1 && (
             <div className="single-team-chip">
               <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Equipo Actual:</span>
-              <span style={{ fontSize: '13px', color: 'var(--primary)', fontWeight: '700' }}>⚽ {user.teams[0].name}</span>
+              <span style={{ fontSize: '13px', color: 'var(--heading)', fontWeight: '700' }}>⚽ {user.teams[0].name}</span>
             </div>
           )}
         </div>

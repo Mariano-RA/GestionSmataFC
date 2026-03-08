@@ -113,7 +113,7 @@ export default function Payments({
         </button>
       </div>
 
-      <h3 style={{ marginTop: '20px', marginBottom: '10px', color: 'var(--primary)' }}>
+      <h3 style={{ marginTop: '20px', marginBottom: '10px', color: 'var(--heading)' }}>
         {filterType === 'recent' ? 'Pagos Recientes' : 'Todos los pagos del mes'}
       </h3>
       <div id="recentPayments">
@@ -134,11 +134,11 @@ export default function Payments({
                       {formatCurrency(p.amount)}
                     </span>
                   </span>
-                  <span style={{ fontSize: '12px', color: '#999' }}>
+                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
                     {new Date(p.date).toLocaleDateString('es-AR')}
                   </span>
                 </div>
-                {p.note && <p style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>{p.note}</p>}
+                {p.note && <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px' }}>{p.note}</p>}
                 <div className="card-actions btn-group">
                   <button
                     className="btn btn-secondary btn-sm"

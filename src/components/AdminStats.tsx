@@ -52,13 +52,13 @@ export default function AdminStats({ stats, loading }: AdminStatsProps) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--primary)' }}>📈 Estadísticas del Sistema</h2>
+      <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--heading)' }}>📈 Estadísticas del Sistema</h2>
 
       {/* Summary Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
         <div className="stat-card" style={{ padding: '15px' }}>
           <h3 style={{ fontSize: '12px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '8px' }}>👥 Usuarios</h3>
-          <div className="value" style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--primary)', marginBottom: '4px' }}>{stats.summary?.totalUsers || 0}</div>
+          <div className="value" style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--heading)', marginBottom: '4px' }}>{stats.summary?.totalUsers || 0}</div>
           <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{stats.summary?.totalActiveUsers || 0} activos</p>
         </div>
 
@@ -81,7 +81,7 @@ export default function AdminStats({ stats, loading }: AdminStatsProps) {
         </div>
         <div className="stat-card">
           <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '6px' }}>👥 Participantes</p>
-          <div className="value" style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--primary)', marginBottom: '4px' }}>{stats.summary?.totalParticipants || 0}</div>
+          <div className="value" style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--heading)', marginBottom: '4px' }}>{stats.summary?.totalParticipants || 0}</div>
           <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>en todos los equipos</p>
         </div>
         <div className="stat-card">
@@ -93,16 +93,16 @@ export default function AdminStats({ stats, loading }: AdminStatsProps) {
 
       {/* Team Statistics */}
       <div style={{ background: 'var(--bg-primary)', padding: '15px', borderRadius: '8px', border: '1px solid var(--border)' }}>
-        <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--primary)', marginBottom: '12px' }}>⚽ Estadísticas por Equipo</h3>
+        <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--heading)', marginBottom: '12px' }}>⚽ Estadísticas por Equipo</h3>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '2px solid var(--border)' }}>
-                <th style={{ textAlign: 'left', padding: '10px', color: 'var(--primary)', fontWeight: 'bold', fontSize: '13px' }}>Equipo</th>
-                <th style={{ textAlign: 'center', padding: '10px', color: 'var(--primary)', fontWeight: 'bold', fontSize: '13px' }}>Participantes</th>
-                <th style={{ textAlign: 'center', padding: '10px', color: 'var(--primary)', fontWeight: 'bold', fontSize: '13px' }}>Pagos</th>
-                <th style={{ textAlign: 'center', padding: '10px', color: 'var(--primary)', fontWeight: 'bold', fontSize: '13px' }}>Gastos</th>
-                <th style={{ textAlign: 'center', padding: '10px', color: 'var(--primary)', fontWeight: 'bold', fontSize: '13px' }}>Admins</th>
+                <th style={{ textAlign: 'left', padding: '10px', color: 'var(--heading)', fontWeight: 'bold', fontSize: '13px' }}>Equipo</th>
+                <th style={{ textAlign: 'center', padding: '10px', color: 'var(--heading)', fontWeight: 'bold', fontSize: '13px' }}>Participantes</th>
+                <th style={{ textAlign: 'center', padding: '10px', color: 'var(--heading)', fontWeight: 'bold', fontSize: '13px' }}>Pagos</th>
+                <th style={{ textAlign: 'center', padding: '10px', color: 'var(--heading)', fontWeight: 'bold', fontSize: '13px' }}>Gastos</th>
+                <th style={{ textAlign: 'center', padding: '10px', color: 'var(--heading)', fontWeight: 'bold', fontSize: '13px' }}>Admins</th>
               </tr>
             </thead>
             <tbody>
@@ -123,7 +123,7 @@ export default function AdminStats({ stats, loading }: AdminStatsProps) {
       {/* Actions by Entity */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '15px' }}>
         <div style={{ background: 'var(--bg-primary)', padding: '15px', borderRadius: '8px', border: '1px solid var(--border)' }}>
-          <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--primary)', marginBottom: '12px' }}>📊 Acciones por Entidad</h3>
+          <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--heading)', marginBottom: '12px' }}>📊 Acciones por Entidad</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {stats.actionsByEntity?.map((stat, idx: number) => (
               <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px', background: 'var(--bg-secondary)', borderRadius: '6px', fontSize: '12px' }}>
@@ -138,7 +138,7 @@ export default function AdminStats({ stats, loading }: AdminStatsProps) {
         </div>
 
         <div style={{ background: 'var(--bg-primary)', padding: '15px', borderRadius: '8px', border: '1px solid var(--border)' }}>
-          <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--primary)', marginBottom: '12px' }}>💰 Transacciones</h3>
+          <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--heading)', marginBottom: '12px' }}>💰 Transacciones</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px', background: 'var(--bg-secondary)', borderRadius: '6px', fontSize: '12px' }}>
               <p style={{ color: 'var(--text)' }}>💳 Total Pagos</p>

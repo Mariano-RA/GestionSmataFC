@@ -33,7 +33,7 @@ export default function ExpenseTrend({ expenses }: ExpenseTrendProps) {
               <div key={cat}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
                   <span style={{ fontSize: '13px', fontWeight: '500' }}>{cat}</span>
-                  <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--primary)' }}>{formatCurrency(amount)}</span>
+                  <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--heading)' }}>{formatCurrency(amount)}</span>
                 </div>
                 <div style={{ background: 'var(--bg-secondary)', borderRadius: '4px', height: '20px', overflow: 'hidden' }}>
                   <div
