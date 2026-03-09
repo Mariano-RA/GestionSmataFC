@@ -1,7 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { formatCurrency, getMonthName, normalizeName } from '@/lib/utils';
+import { formatCurrency, normalizeName } from '@/lib/utils';
+import { buildDebtReminderMessage, openWhatsAppForDebtor as openWhatsApp } from '@/lib/utils/whatsapp';
+import {
+  computeParticipantsWithDebtStatus,
+  filterDebtorsByType,
+  type DebtFilterType,
+} from '@/lib/domain/debt';
 import type { Participant, Payment } from '@/types';
 
 interface DebtorsProps {
@@ -19,89 +25,28 @@ export default function Debtors({
   currentMonth,
   addToast
 }: DebtorsProps) {
-  const [filterType, setFilterType] = useState('all');
+  const [filterType, setFilterType] = useState<DebtFilterType>('all');
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
-  const allParticipantsStatus = participants
-    .filter(p => p.active)
-    .map(p => {
-      const required = getRequiredAmount(p);
-      const participantPayments = payments.filter(pay => pay.participantId === p.id);
-      const paidThisMonth = participantPayments
-        .filter(pay => pay.date.startsWith(currentMonth))
-        .reduce((sum, pay) => sum + pay.amount, 0);
-
-      const monthPayments = participantPayments
-        .filter(pay => pay.date.startsWith(currentMonth))
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-      const debtThisMonth = Math.max(0, required - paidThisMonth);
-
-      const monthsWithActivity = new Set(participantPayments.map(pay => pay.date.slice(0, 7)));
-      monthsWithActivity.add(currentMonth);
-      const allMonths = Array.from(monthsWithActivity).sort();
-      let totalDebt = 0;
-      allMonths.forEach(month => {
-        const paidInMonth = participantPayments
-          .filter(pay => pay.date.startsWith(month))
-          .reduce((sum, pay) => sum + pay.amount, 0);
-        totalDebt += Math.max(0, required - paidInMonth);
-      });
-      const previousDebt = Math.max(0, totalDebt - debtThisMonth);
-
-      return {
-        ...p,
-        required,
-        paid: paidThisMonth,
-        debt: debtThisMonth,
-        previousDebt,
-        totalDebt,
-        paymentHistory: monthPayments
-      };
-    })
-    .sort((a, b) => b.debt - a.debt);
-
+  const allParticipantsStatus = computeParticipantsWithDebtStatus(
+    participants,
+    payments,
+    currentMonth,
+    getRequiredAmount
+  );
   const debtors = allParticipantsStatus.filter(p => p.debt > 0);
+  const filtered = filterDebtorsByType(allParticipantsStatus, filterType);
 
-  let filtered = debtors;
-  if (filterType === 'high') {
-    filtered = debtors.filter(p => p.required > 0 && p.debt > p.required * 0.5);
-  } else if (filterType === 'medium') {
-    filtered = debtors.filter(p => p.debt > 0 && (p.required <= 0 || p.debt <= p.required * 0.5));
-  } else if (filterType === 'completed') {
-    filtered = allParticipantsStatus.filter(p => p.debt === 0);
-  }
-
-  const normalizePhoneForWhatsApp = (phone: string | null | undefined): string | null => {
-    if (!phone || !phone.trim()) return null;
-    const digits = phone.replace(/\D/g, '');
-    if (digits.length < 8) return null;
-    if (digits.startsWith('54') && digits.length >= 12) return digits;
-    if (digits.length === 10 && digits.startsWith('9')) return '54' + digits;
-    if (digits.length === 11 && digits.startsWith('15')) return '54' + '9' + digits.slice(2);
-    return digits;
-  };
-
-  const openWhatsAppForDebtor = (
-    phone: string | null | undefined,
-    name: string,
-    debtThisMonth: number,
-    previousDebt: number
-  ) => {
-    const monthName = getMonthName(currentMonth);
-    const totalDebt = debtThisMonth + previousDebt;
-    let message = `Hola ${normalizeName(name)}, te recuerdo que tenés una cuota pendiente de ${formatCurrency(debtThisMonth)} correspondiente al mes de ${monthName}.`;
-    if (previousDebt > 0) {
-      message += ` Además tenés una deuda anterior de ${formatCurrency(previousDebt)}, lo que hace un total de ${formatCurrency(totalDebt)}.`;
-    }
-    message += ' ¡Gracias!';
-    const encoded = encodeURIComponent(message);
-    const waNumber = normalizePhoneForWhatsApp(phone);
-    if (waNumber) {
-      window.open(`https://wa.me/${waNumber}?text=${encoded}`, '_blank', 'noopener,noreferrer');
-    } else {
-      addToast('Este jugador no tiene número cargado. Agregalo en Participantes.', 'error');
-    }
+  const handleOpenWhatsApp = (p: typeof allParticipantsStatus[0]) => {
+    const message = buildDebtReminderMessage(
+      p.name,
+      currentMonth,
+      p.debt,
+      p.previousDebt
+    );
+    openWhatsApp(p.phone, message, () =>
+      addToast('Este jugador no tiene número cargado. Agregalo en Participantes.', 'error')
+    );
   };
 
   return (
@@ -189,8 +134,7 @@ export default function Debtors({
                         title="Avisar por WhatsApp"
                         onClick={(e) => {
                           e.stopPropagation();
-                          const message = encodeURIComponent(`Hola ${normalizeName(p.name)}, te recuerdo que tenés un saldo pendiente de ${formatCurrency(p.debt)} correspondiente a ${currentMonth}. ¡Gracias!`);
-                          window.open(`https://wa.me/${p.phone}?text=${message}`, '_blank');
+                          handleOpenWhatsApp(p);
                         }}
                         style={{
                           background: 'none',

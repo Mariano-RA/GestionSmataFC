@@ -1,7 +1,8 @@
 'use client';
 
-import type { Participant, Payment } from '@/types';
+import { computeParticipantPaymentStats } from '@/lib/domain/participantStats';
 import { formatCurrency } from '@/lib/utils';
+import type { Participant, Payment } from '@/types';
 
 interface PaymentStatsProps {
   participants: Participant[];
@@ -16,21 +17,12 @@ export default function PaymentStats({
   currentMonth,
   getRequiredAmount
 }: PaymentStatsProps) {
-  const activeParticipants = participants.filter(p => p.active);
-  
-  const stats = activeParticipants.map(p => {
-    const paid = payments
-      .filter(pay => pay.participantId === p.id && pay.date.startsWith(currentMonth))
-      .reduce((sum, pay) => sum + pay.amount, 0);
-    const required = getRequiredAmount(p);
-    return {
-      ...p,
-      paid,
-      required,
-      missing: Math.max(0, required - paid),
-      percentage: required > 0 ? (paid / required) * 100 : 100
-    };
-  }).sort((a, b) => b.paid - a.paid);
+  const stats = computeParticipantPaymentStats(
+    participants,
+    payments,
+    currentMonth,
+    getRequiredAmount
+  );
 
   return (
     <div style={{ marginTop: '20px', padding: '15px', background: 'var(--bg-primary)', borderRadius: '8px', border: '1px solid var(--border)' }}>

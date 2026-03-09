@@ -5,9 +5,15 @@ import { normalizeName } from '@/lib/utils';
 import type { Participant, Payment, ParticipantStatus } from '@/types';
 
 const STATUS_LABELS: Record<ParticipantStatus, string> = {
-  activo: 'Activo (cuota completa)',
-  sin_laburo: 'Sin laburo (no paga)',
-  lesionado: 'Lesionado (mitad de cuota)',
+  activo: 'Activo',
+  sin_laburo: 'Sin trabajo',
+  lesionado: 'Lesionado',
+};
+
+const STATUS_SORT_ORDER: Record<ParticipantStatus, number> = {
+  lesionado: 0,
+  sin_laburo: 1,
+  activo: 2,
 };
 
 interface ParticipantsProps {
@@ -34,7 +40,7 @@ export default function Participants({
   onShowHistory
 }: ParticipantsProps) {
   const [searchInput, setSearchInput] = useState('');
-  const [filterType, setFilterType] = useState('all');
+  const [sortOption, setSortOption] = useState<'all_status' | 'active_status' | 'all_name_asc' | 'all_name_desc'>('all_status');
   const [newName, setNewName] = useState('');
   const [newPhone, setNewPhone] = useState('');
   const [newNotes, setNewNotes] = useState('');
@@ -96,11 +102,23 @@ export default function Participants({
     setShowModal(true);
   };
 
-  const filtered = participants.filter(p => {
-    const matchSearch = p.name.toLowerCase().includes(searchInput.toLowerCase());
-    const matchFilter = filterType === 'all' || (filterType === 'active' && p.active);
-    return matchSearch && matchFilter;
-  }).sort((a, b) => a.name.localeCompare(b.name));
+  const filtered = participants
+    .filter(p => {
+      const matchSearch = p.name.toLowerCase().includes(searchInput.toLowerCase());
+      const onlyActive = sortOption === 'active_status';
+      const matchFilter = !onlyActive || p.active;
+      return matchSearch && matchFilter;
+    })
+    .sort((a, b) => {
+      if (sortOption === 'all_name_asc' || sortOption === 'all_name_desc') {
+        const cmp = a.name.localeCompare(b.name, 'es');
+        return sortOption === 'all_name_desc' ? -cmp : cmp;
+      }
+      const statusA = STATUS_SORT_ORDER[(a.status as ParticipantStatus) || 'activo'];
+      const statusB = STATUS_SORT_ORDER[(b.status as ParticipantStatus) || 'activo'];
+      if (statusA !== statusB) return statusA - statusB;
+      return a.name.localeCompare(b.name, 'es');
+    });
 
   return (
     <div className="tab-content">
@@ -114,23 +132,27 @@ export default function Participants({
       </div>
 
 
-      <div style={{ marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <button
-            className={`filter-btn ${filterType === 'all' ? 'active' : ''}`}
-            style={{marginBottom: '5px', width: '100px'}}
-            onClick={() => setFilterType('all')}
-          >
-            Todos
-          </button>
-          <button
-            className={`filter-btn ${filterType === 'active' ? 'active' : ''}`}
-            style={{marginBottom: '5px', width: '100px'}}
-            onClick={() => setFilterType('active')}
-          >
-            Activos
-          </button>
-        </div>
+      <div style={{ marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <label htmlFor="participants-sort" style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Orden:</label>
+        <select
+          id="participants-sort"
+          value={sortOption}
+          onChange={e => setSortOption(e.target.value as typeof sortOption)}
+          style={{
+            padding: '8px 12px',
+            borderRadius: '6px',
+            border: '1px solid var(--border)',
+            background: 'var(--bg-primary)',
+            color: 'var(--text)',
+            fontSize: '14px',
+            width: '220px',
+          }}
+        >
+          <option value="all_status">Todos — Estado y nombre</option>
+          <option value="active_status">Solo activos — Estado y nombre</option>
+          <option value="all_name_asc">Todos — Nombre A-Z</option>
+          <option value="all_name_desc">Todos — Nombre Z-A</option>
+        </select>
         <button className="btn btn-primary" onClick={openAdd}>
           ➕ Agregar Participante
         </button>
@@ -220,7 +242,7 @@ export default function Participants({
             />
           </div>
           <div className="form-group">
-            <label>Estado (afecta la cuota)</label>
+            <label>Estado</label>
             <select
               value={newStatus}
               onChange={e => setNewStatus(e.target.value as ParticipantStatus)}

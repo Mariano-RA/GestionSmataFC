@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { formatCurrency, getMonthName } from '@/lib/utils';
+import { computeMonthComparison } from '@/lib/domain/summary';
 import type { Payment, Expense } from '@/types';
 
 interface ComparisonProps {
@@ -19,12 +20,11 @@ export default function Comparison({
 }: ComparisonProps) {
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
 
-  const monthPayments = payments.filter(p => p.date.startsWith(selectedMonth));
-  const monthExpenses = expenses.filter(e => e.date.startsWith(selectedMonth));
-
-  const collected = monthPayments.reduce((sum, p) => sum + p.amount, 0);
-  const totalExpenses = monthExpenses.reduce((sum, e) => sum + e.amount, 0);
-  const profit = Math.max(0, collected - totalExpenses);
+  const { collected, totalExpenses, profit, paymentCount, expenseCount } = computeMonthComparison(
+    payments,
+    expenses,
+    selectedMonth
+  );
 
   return (
     <div className="tab-content">
@@ -58,7 +58,7 @@ export default function Comparison({
         </div>
         <div className="comparison-item">
           <div className="comparison-label">Operaciones</div>
-          <div className="comparison-value">{monthPayments.length + monthExpenses.length}</div>
+          <div className="comparison-value">{paymentCount + expenseCount}</div>
         </div>
       </div>
 

@@ -262,7 +262,7 @@ export default function Settings({
             </span>
           ))}
         </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', width: '100%' }}>
           <input
             type="text"
             value={newCategoryInput}
@@ -278,7 +278,17 @@ export default function Settings({
               }
             }}
             placeholder="Nueva categoría (ej: Comida)"
-            style={{ flex: 1, padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text)' }}
+            style={{
+              flex: 1,
+              minWidth: '180px',
+              padding: '8px 12px',
+              borderRadius: '6px',
+              border: '1px solid var(--border)',
+              background: 'var(--bg-primary)',
+              color: 'var(--text)',
+              fontSize: '16px',
+              boxSizing: 'border-box',
+            }}
           />
           <button
             type="button"
@@ -296,12 +306,14 @@ export default function Settings({
         </div>
       </div>
 
-      <button className="btn btn-success" onClick={handleSave}>
-        💾 Guardar Configuración
-      </button>
-      <button className="btn btn-secondary" onClick={onReset} style={{ marginTop: '10px' }}>
-        🔄 Restaurar
-      </button>
+      <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+        <button type="button" className="btn btn-secondary" onClick={onReset} style={{ flex: 1 }}>
+          🔄 Restaurar
+        </button>
+        <button type="button" className="btn btn-success" onClick={handleSave} style={{ flex: 1 }}>
+          💾 Guardar Configuración
+        </button>
+      </div>
 
       <hr style={{ margin: '20px 0', borderColor: 'var(--border)' }} />
 
