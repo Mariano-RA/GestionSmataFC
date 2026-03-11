@@ -11,7 +11,7 @@ export function addMonths(monthStr: string, delta: number): string {
 export function getMonthName(m: string): string {
   const [y, mon] = m.split('-').map(Number);
   const d = new Date(y, mon - 1, 1);
-  return d.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
+  return d.toLocaleDateString('es-AR', { month: 'long' }).toUpperCase();
 }
 
 export function formatNumber(num: number): string {

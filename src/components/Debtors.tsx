@@ -1,19 +1,26 @@
 'use client';
 
 import { useState } from 'react';
-import { formatCurrency, normalizeName } from '@/lib/utils';
+import { formatCurrency, getMonthName, normalizeName } from '@/lib/utils';
 import { buildDebtReminderMessage, openWhatsAppForDebtor as openWhatsApp } from '@/lib/utils/whatsapp';
 import {
   computeParticipantsWithDebtStatus,
   filterDebtorsByType,
   type DebtFilterType,
 } from '@/lib/domain/debt';
-import type { Participant, Payment } from '@/types';
+import type { Participant, Payment, ParticipantStatus } from '@/types';
+
+const STATUS_SORT_ORDER: Record<ParticipantStatus, number> = {
+  sin_laburo: 0,
+  lesionado: 1,
+  activo: 2,
+};
 
 interface DebtorsProps {
   participants: Participant[];
   payments: Payment[];
   getRequiredAmount: (p: Participant) => number;
+  monthlyShare: number;
   currentMonth: string;
   addToast: (message: string, type: 'success' | 'error' | 'info') => void;
 }
@@ -22,18 +29,28 @@ export default function Debtors({
   participants,
   payments,
   getRequiredAmount,
+  monthlyShare,
   currentMonth,
   addToast
 }: DebtorsProps) {
   const [filterType, setFilterType] = useState<DebtFilterType>('all');
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
-  const allParticipantsStatus = computeParticipantsWithDebtStatus(
+  const computed = computeParticipantsWithDebtStatus(
     participants,
     payments,
     currentMonth,
     getRequiredAmount
   );
+  const allParticipantsStatus = [...computed].sort((a, b) => {
+    const aSinPagar = a.paid === 0 ? 0 : 1;
+    const bSinPagar = b.paid === 0 ? 0 : 1;
+    if (aSinPagar !== bSinPagar) return aSinPagar - bSinPagar;
+    const orderA = STATUS_SORT_ORDER[(a.status as ParticipantStatus) ?? 'activo'];
+    const orderB = STATUS_SORT_ORDER[(b.status as ParticipantStatus) ?? 'activo'];
+    if (orderA !== orderB) return orderA - orderB;
+    return normalizeName(a.name).localeCompare(normalizeName(b.name));
+  });
   const debtors = allParticipantsStatus.filter(p => p.debt > 0);
   const filtered = filterDebtorsByType(allParticipantsStatus, filterType);
 
@@ -84,16 +101,16 @@ export default function Debtors({
             className="btn btn-warning"
             style={{ width: '100%', marginBottom: '12px', background: '#FFD700', color: '#000' }}
             onClick={() => {
-              const msg =
-                `Saldos ${currentMonth}\n` +
-                allParticipantsStatus
-                  .map(p => {
-                    if (p.required > 0) {
-                      return `${normalizeName(p.name)}: ${formatCurrency(p.paid)}/${formatCurrency(p.required)}`;
-                    }
-                    return `${normalizeName(p.name)} (sin cuota)`;
-                  })
-                  .join('\n');
+              const header = `Mes: ${getMonthName(currentMonth)} - Cuota: ${formatCurrency(monthlyShare)}`;
+              const listado = allParticipantsStatus
+                .map(p => {
+                  if (p.required > 0) {
+                    return p.paid === 0 ? normalizeName(p.name) : `${normalizeName(p.name)}: ${formatCurrency(p.paid)}`;
+                  }
+                  return normalizeName(p.name);
+                })
+                .join('\n');
+              const msg = `${header}\n${listado}`;
               navigator.clipboard.writeText(msg);
               addToast('Mensaje copiado al portapapeles', 'success');
             }}

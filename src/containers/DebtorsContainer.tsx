@@ -10,6 +10,7 @@ export default function DebtorsContainer() {
       participants={data.participants}
       payments={data.payments}
       getRequiredAmount={data.getRequiredAmount}
+      monthlyShare={data.monthlyShare}
       currentMonth={data.currentMonth}
       addToast={data.addToast}
     />
