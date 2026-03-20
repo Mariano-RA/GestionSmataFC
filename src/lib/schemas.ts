@@ -120,6 +120,9 @@ export const updatePaymentSchema = z.object({
 export const monthlyConfigSchema = z.object({
   monthlyTarget: z.coerce.number().positive('monthlyTarget debe ser positivo'),
   rent: z.coerce.number().nonnegative('rent no puede ser negativo'),
+  activeParticipants: z.coerce.number().int().positive().optional(),
+  effectiveParticipants: z.coerce.number().positive().optional(),
+  monthlyShare: z.coerce.number().nonnegative().optional(),
 });
 
 export type MonthlyConfigRequest = z.infer<typeof monthlyConfigSchema>;

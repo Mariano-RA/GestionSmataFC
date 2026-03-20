@@ -6,12 +6,14 @@ interface MonthlyProgressBarProps {
   payments: Payment[];
   currentMonth: string;
   monthlyObjective: number;
+  monthlyDebtTotal: number;
 }
 
 export default function MonthlyProgressBar({
   payments,
   currentMonth,
   monthlyObjective,
+  monthlyDebtTotal,
 }: MonthlyProgressBarProps) {
   const monthPayments = payments.filter(p => p.date.startsWith(currentMonth));
   const collected = monthPayments.reduce((sum, p) => sum + p.amount, 0);
@@ -30,13 +32,14 @@ export default function MonthlyProgressBar({
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
           gap: '10px',
           fontSize: '12px',
         }}
       >
         <div>Objetivo: ${monthlyObjective.toLocaleString('es-AR')}</div>
         <div>Recaudado: ${collected.toLocaleString('es-AR')}</div>
+        <div>Deuda del mes: ${monthlyDebtTotal.toLocaleString('es-AR')}</div>
       </div>
     </>
   );

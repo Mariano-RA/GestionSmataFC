@@ -9,6 +9,11 @@ export interface ParticipantWithDebtStatus extends Participant {
   paymentHistory: Payment[];
 }
 
+interface ComputeDebtOptions {
+  getRequiredAmountForMonth?: (p: Participant, month: string) => number;
+  historyMonths?: string[];
+}
+
 /**
  * Calcula el estado de deuda de cada participante activo para el mes dado.
  * Funciones puras y testeables.
@@ -17,7 +22,8 @@ export function computeParticipantsWithDebtStatus(
   participants: Participant[],
   payments: Payment[],
   currentMonth: string,
-  getRequiredAmount: (p: Participant) => number
+  getRequiredAmount: (p: Participant) => number,
+  options?: ComputeDebtOptions
 ): ParticipantWithDebtStatus[] {
   return participants
     .filter(p => p.active)
@@ -32,17 +38,23 @@ export function computeParticipantsWithDebtStatus(
         .filter(pay => pay.date.startsWith(currentMonth))
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-      const debtThisMonth = Math.max(0, required - paidThisMonth);
+      const requiredThisMonth =
+        options?.getRequiredAmountForMonth?.(p, currentMonth) ?? required;
+      const debtThisMonth = Math.max(0, requiredThisMonth - paidThisMonth);
 
       const monthsWithActivity = new Set(participantPayments.map(pay => pay.date.slice(0, 7)));
       monthsWithActivity.add(currentMonth);
+      options?.historyMonths?.forEach((month) => {
+        if (month <= currentMonth) monthsWithActivity.add(month);
+      });
       const allMonths = Array.from(monthsWithActivity).sort();
       let totalDebt = 0;
       allMonths.forEach(month => {
+        const requiredForMonth = options?.getRequiredAmountForMonth?.(p, month) ?? required;
         const paidInMonth = participantPayments
           .filter(pay => pay.date.startsWith(month))
           .reduce((sum, pay) => sum + pay.amount, 0);
-        totalDebt += Math.max(0, required - paidInMonth);
+        totalDebt += Math.max(0, requiredForMonth - paidInMonth);
       });
       const previousDebt = Math.max(0, totalDebt - debtThisMonth);
 

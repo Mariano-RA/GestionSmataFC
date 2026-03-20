@@ -22,6 +22,7 @@ export interface TeamDataContextValue {
   monthlyObjective: number;
   monthlyShare: number;
   getRequiredAmount: (p: Participant) => number;
+  getRequiredAmountForMonth: (p: Participant, month: string) => number;
   effectiveParticipants: number;
   handleAddParticipant: (name: string, phone: string, notes: string, status?: string) => Promise<void>;
   handleRemoveParticipant: (id: number) => Promise<void>;
@@ -35,6 +36,7 @@ export interface TeamDataContextValue {
   handleDeleteExpense: (id: number) => Promise<void>;
   handleSaveConfig: (newConfig: AppConfig) => Promise<void>;
   handleResetConfig: () => Promise<void>;
+  handleCloseMonth: () => Promise<boolean>;
   request: RequestFn;
   currentTeamId: number | null;
   currentMonth: string;

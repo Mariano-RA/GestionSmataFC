@@ -78,6 +78,49 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
   const [stats, setStats] = useState<AdminStatsData | null>(null);
   const [loadingStats, setLoadingStats] = useState(false);
+  const [downloadingBackup, setDownloadingBackup] = useState(false);
+
+  const downloadFullBackup = async () => {
+    try {
+      setDownloadingBackup(true);
+      const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+      const res = await fetch('/api/admin/backup', {
+        method: 'GET',
+        credentials: 'include',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+
+      if (!res.ok) {
+        let message = 'No se pudo descargar el backup completo';
+        try {
+          const raw = await res.json();
+          message = raw?.error || raw?.data?.error || message;
+        } catch {
+          // sin cuerpo JSON
+        }
+        throw new Error(message);
+      }
+
+      const blob = await res.blob();
+      const dispo = res.headers.get('content-disposition') || '';
+      const fileNameMatch = dispo.match(/filename="([^"]+)"/i);
+      const fileName = fileNameMatch?.[1] || `backup-completo-${new Date().toISOString().slice(0, 10)}.json`;
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('Backup completo descargado');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Error descargando backup completo');
+      logger.error('Error downloading full backup', error);
+    } finally {
+      setDownloadingBackup(false);
+    }
+  };
 
   // Redirigir si no es super_admin
   useEffect(() => {
@@ -185,6 +228,22 @@ export default function AdminDashboard() {
                     <StatCard title="Equipos" value={stats.summary?.totalTeams || 0} subtitle={`${stats.summary?.totalActiveTeams || 0} activos`} icon="⚽"/>
                     <StatCard title="Participantes" value={stats.summary?.totalParticipants || 0} subtitle="registrados" icon="🏃"/>
                     <StatCard title="Auditoría" value={stats.summary?.totalAuditLogs || 0} subtitle="eventos" icon="📋"/>
+                  </div>
+
+                  <div style={{ background: 'var(--bg-secondary)', padding: '15px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                    <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--heading)', marginBottom: '10px' }}>
+                      💾 Backup completo del sistema
+                    </h3>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '12px' }}>
+                      Descarga un JSON con todas las tablas y todos los equipos.
+                    </p>
+                    <button
+                      className="btn btn-secondary"
+                      onClick={downloadFullBackup}
+                      disabled={downloadingBackup}
+                    >
+                      {downloadingBackup ? 'Descargando...' : '📥 Descargar backup completo'}
+                    </button>
                   </div>
 
                   {/* Top Users */}

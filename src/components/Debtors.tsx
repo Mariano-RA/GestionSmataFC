@@ -20,6 +20,8 @@ interface DebtorsProps {
   participants: Participant[];
   payments: Payment[];
   getRequiredAmount: (p: Participant) => number;
+  getRequiredAmountForMonth: (p: Participant, month: string) => number;
+  historyMonths: string[];
   monthlyShare: number;
   currentMonth: string;
   addToast: (message: string, type: 'success' | 'error' | 'info') => void;
@@ -29,6 +31,8 @@ export default function Debtors({
   participants,
   payments,
   getRequiredAmount,
+  getRequiredAmountForMonth,
+  historyMonths,
   monthlyShare,
   currentMonth,
   addToast
@@ -40,7 +44,8 @@ export default function Debtors({
     participants,
     payments,
     currentMonth,
-    getRequiredAmount
+    getRequiredAmount,
+    { getRequiredAmountForMonth, historyMonths }
   );
   const allParticipantsStatus = [...computed].sort((a, b) => {
     const aSinPagar = a.paid === 0 ? 0 : 1;

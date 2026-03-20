@@ -63,6 +63,17 @@ export interface Participant {
   createdAt: string;
 }
 
+export interface ParticipantMonthlyStatus {
+  id: number;
+  teamId: number;
+  participantId: number;
+  month: string;
+  active: boolean;
+  status?: ParticipantStatus | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Payment {
   id: number;
   teamId: number;
@@ -104,6 +115,9 @@ export interface MonthlyConfig {
   month: string;
   monthlyTarget: number;
   rent: number;
+  activeParticipants?: number | null;
+  effectiveParticipants?: number | null;
+  monthlyShare?: number | null;
 }
 
 /** Respuesta de GET /api/config?month=YYYY-MM: siempre incluye fieldRental para unificar con AppConfig. */

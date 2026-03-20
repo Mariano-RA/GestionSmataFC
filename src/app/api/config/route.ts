@@ -118,14 +118,74 @@ export async function POST(request: NextRequest) {
       if (!validation.success) {
         return ApiResponse.fromZodError(validation.error);
       }
-      const { monthlyTarget, rent } = validation.data;
+      const {
+        monthlyTarget,
+        rent,
+        activeParticipants,
+        effectiveParticipants,
+        monthlyShare,
+      } = validation.data;
+      const teamParticipants = await db.participant.findMany({
+        where: { teamId: parsedTeamId },
+        select: { id: true, active: true, status: true },
+      });
+      const activeTeamParticipants = teamParticipants.filter((p) => p.active);
+      const computedActiveParticipants = activeTeamParticipants.length;
+      const computedEffectiveParticipants =
+        activeTeamParticipants.reduce(
+          (sum, p) => sum + (p.status === 'sin_laburo' ? 0 : p.status === 'lesionado' ? 0.5 : 1),
+          0
+        ) || 1;
+      const snapshotActiveParticipants = activeParticipants ?? computedActiveParticipants;
+      const snapshotEffectiveParticipants = effectiveParticipants ?? computedEffectiveParticipants;
+      const snapshotMonthlyShare =
+        monthlyShare ??
+        ((monthlyTarget + rent) / (snapshotEffectiveParticipants > 0 ? snapshotEffectiveParticipants : 1));
 
       const config = await db.$transaction(async (tx) => {
         const upserted = await tx.monthlyConfig.upsert({
           where: { teamId_month: { teamId: parsedTeamId, month } },
-          update: { monthlyTarget, rent },
-          create: { teamId: parsedTeamId, month, monthlyTarget, rent },
+          update: {
+            monthlyTarget,
+            rent,
+            activeParticipants: snapshotActiveParticipants,
+            effectiveParticipants: snapshotEffectiveParticipants,
+            monthlyShare: snapshotMonthlyShare,
+          },
+          create: {
+            teamId: parsedTeamId,
+            month,
+            monthlyTarget,
+            rent,
+            activeParticipants: snapshotActiveParticipants,
+            effectiveParticipants: snapshotEffectiveParticipants,
+            monthlyShare: snapshotMonthlyShare,
+          },
         });
+        await Promise.all(
+          teamParticipants.map((participant) =>
+            tx.participantMonthlyStatus.upsert({
+              where: {
+                participantId_month: {
+                  participantId: participant.id,
+                  month,
+                },
+              },
+              update: {
+                active: participant.active,
+                status: participant.status || 'activo',
+                teamId: parsedTeamId,
+              },
+              create: {
+                teamId: parsedTeamId,
+                participantId: participant.id,
+                month,
+                active: participant.active,
+                status: participant.status || 'activo',
+              },
+            })
+          )
+        );
         await createAuditLog(
           {
             teamId: parsedTeamId,
@@ -134,7 +194,14 @@ export async function POST(request: NextRequest) {
             entity: 'MonthlyConfig',
             entityId: upserted.id,
             description: `Configuración mensual actualizada: ${month}`,
-            metadata: { month, monthlyTarget, rent },
+            metadata: {
+              month,
+              monthlyTarget,
+              rent,
+              activeParticipants: snapshotActiveParticipants,
+              effectiveParticipants: snapshotEffectiveParticipants,
+              monthlyShare: snapshotMonthlyShare,
+            },
             ipAddress: ip,
           },
           tx

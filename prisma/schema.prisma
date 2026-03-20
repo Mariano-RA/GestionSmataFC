@@ -22,6 +22,7 @@ model Team {
   expenses      Expense[]
   configs       Config[]
   monthlyConfigs MonthlyConfig[]
+  participantMonthlyStatuses ParticipantMonthlyStatus[]
   userTeams     UserTeam[]
   auditLogs     AuditLog[]
 }
@@ -97,10 +98,28 @@ model Participant {
   joinDate  DateTime @default(now())
   team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   payments  Payment[]
+  monthlyStatuses ParticipantMonthlyStatus[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([teamId])
+}
+
+model ParticipantMonthlyStatus {
+  id            Int      @id @default(autoincrement())
+  teamId         Int
+  participantId  Int
+  month          String   // YYYY-MM
+  active         Boolean
+  status         String?  @default("activo") // activo | sin_laburo | lesionado
+  team           Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  participant    Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([participantId, month])
+  @@index([teamId, month])
+  @@index([participantId])
 }
 
 model Payment {
@@ -155,6 +174,9 @@ model MonthlyConfig {
   month    String   // YYYY-MM
   monthlyTarget Int
   rent     Int
+  activeParticipants Int?
+  effectiveParticipants Float?
+  monthlyShare Float?
   team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
