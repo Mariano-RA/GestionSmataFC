@@ -70,7 +70,7 @@ export async function PATCH(
     if (!validation.success) {
       return ApiResponse.fromZodError(validation.error);
     }
-    const { name, amount, date, category } = validation.data;
+    const { name, amount, date, category, includeInMonthlyShare } = validation.data;
     
     const currentExpense = await db.expense.findUnique({
       where: { id: Number(id) }
@@ -97,6 +97,7 @@ export async function PATCH(
           amount: Number(amount),
           date,
           category: category || 'Otros',
+          ...(includeInMonthlyShare === undefined ? {} : { includeInMonthlyShare: Boolean(includeInMonthlyShare) }),
         },
       });
       await createAuditLog(

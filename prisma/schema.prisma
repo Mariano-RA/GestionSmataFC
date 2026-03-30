@@ -94,7 +94,7 @@ model Participant {
   phone     String?
   notes     String?
   active    Boolean  @default(true)
-  status    String?  @default("activo") // activo | sin_laburo | lesionado
+  status    String?  @default("activo") // activo | sin_laburo | lesionado | media_cuota
   joinDate  DateTime @default(now())
   team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   payments  Payment[]
@@ -111,7 +111,7 @@ model ParticipantMonthlyStatus {
   participantId  Int
   month          String   // YYYY-MM
   active         Boolean
-  status         String?  @default("activo") // activo | sin_laburo | lesionado
+  status         String?  @default("activo") // activo | sin_laburo | lesionado | media_cuota
   team           Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   participant    Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
   createdAt      DateTime @default(now())
@@ -147,6 +147,7 @@ model Expense {
   amount    Int
   date      String    // YYYY-MM-DD
   category  String    @default("Otros") // Alquiler, Arbitraje, Equipamiento, Otros
+  includeInMonthlyShare Boolean @default(false)
   team      Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
   recordedAt DateTime  @default(now())
   createdAt DateTime  @default(now())
@@ -174,6 +175,7 @@ model MonthlyConfig {
   month    String   // YYYY-MM
   monthlyTarget Int
   rent     Int
+  includedExpenses Int?
   activeParticipants Int?
   effectiveParticipants Float?
   monthlyShare Float?

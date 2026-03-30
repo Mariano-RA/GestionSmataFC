@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
       return ApiResponse.fromZodError(validation.error);
     }
 
-    const { name, amount, date, category } = validation.data;
+    const { name, amount, date, category, includeInMonthlyShare } = validation.data;
 
     // Validar autenticación, acceso al equipo y permiso de escritura
     const auth = await validateProtectedTeamRouteWithMethod(request, db, teamId, 'POST');
@@ -91,6 +91,7 @@ export async function POST(request: NextRequest) {
           amount: Number(amount),
           date,
           category: category || 'Otros',
+          includeInMonthlyShare: Boolean(includeInMonthlyShare),
         },
       });
       await createAuditLog(
@@ -101,7 +102,7 @@ export async function POST(request: NextRequest) {
           entity: 'Expense',
           entityId: created.id,
           description: `Gasto creado: ${name} - $${amount}`,
-          metadata: { name, amount, date, category },
+          metadata: { name, amount, date, category, includeInMonthlyShare: Boolean(includeInMonthlyShare) },
           ipAddress: ip,
         },
         tx

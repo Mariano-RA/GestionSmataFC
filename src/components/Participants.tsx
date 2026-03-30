@@ -8,12 +8,14 @@ const STATUS_LABELS: Record<ParticipantStatus, string> = {
   activo: 'Activo',
   sin_laburo: 'Sin trabajo',
   lesionado: 'Lesionado',
+  media_cuota: 'Media cuota',
 };
 
 const STATUS_SORT_ORDER: Record<ParticipantStatus, number> = {
   lesionado: 0,
-  sin_laburo: 1,
-  activo: 2,
+  media_cuota: 1,
+  sin_laburo: 2,
+  activo: 3,
 };
 
 interface ParticipantsProps {

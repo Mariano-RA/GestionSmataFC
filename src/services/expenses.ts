@@ -8,7 +8,7 @@ export async function getExpenses(request: RequestFn): Promise<Expense[] | null>
 
 export async function createExpense(
   request: RequestFn,
-  body: { name: string; amount: number; date: string; category: string }
+  body: { name: string; amount: number; date: string; category: string; includeInMonthlyShare?: boolean }
 ): Promise<Expense | null> {
   return request<Expense>('/api/expenses', {
     method: 'POST',
@@ -19,7 +19,7 @@ export async function createExpense(
 export async function updateExpense(
   request: RequestFn,
   id: number,
-  body: { name: string; amount: number; date: string; category: string }
+  body: { name: string; amount: number; date: string; category: string; includeInMonthlyShare?: boolean }
 ): Promise<Expense | null> {
   return request<Expense>(`/api/expenses/${id}`, {
     method: 'PATCH',

@@ -40,6 +40,8 @@ describe('computeMonthlySummary', () => {
     );
     expect(summary.collected).toBe(1000);
     expect(summary.monthlyObjective).toBe(1500);
+    expect(summary.baseObjective).toBe(1500);
+    expect(summary.includedExpensesForShare).toBe(0);
     expect(summary.progress).toBeCloseTo((1000 / 1500) * 100);
     expect(summary.totalDebt).toBe(500);
   });
@@ -61,6 +63,27 @@ describe('computeMonthlySummary', () => {
     );
     expect(summary.recordedExpenses).toBe(200);
     expect(summary.totalCosts).toBe(200 + defaultConfig.monthlyTarget + defaultConfig.fieldRental);
+  });
+
+  it('suma solo gastos marcados en el objetivo mensual', () => {
+    const participants = [participant(1)];
+    const payments: Payment[] = [];
+    const expenses: Expense[] = [
+      { id: 1, teamId: 1, name: 'Pelotas', amount: 200, date: '2024-03-01', category: 'Equipamiento', includeInMonthlyShare: true, recordedAt: '' },
+      { id: 2, teamId: 1, name: 'Asado', amount: 300, date: '2024-03-02', category: 'Otros', includeInMonthlyShare: false, recordedAt: '' },
+    ];
+    const getRequiredAmount = () => 0;
+    const summary = computeMonthlySummary(
+      participants,
+      payments,
+      expenses,
+      '2024-03',
+      defaultConfig,
+      getRequiredAmount
+    );
+    expect(summary.includedExpensesForShare).toBe(200);
+    expect(summary.baseObjective).toBe(1500);
+    expect(summary.monthlyObjective).toBe(1700);
   });
 });
 

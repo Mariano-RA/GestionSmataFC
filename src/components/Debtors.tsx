@@ -13,7 +13,8 @@ import type { Participant, Payment, ParticipantStatus } from '@/types';
 const STATUS_SORT_ORDER: Record<ParticipantStatus, number> = {
   sin_laburo: 0,
   lesionado: 1,
-  activo: 2,
+  media_cuota: 2,
+  activo: 3,
 };
 
 interface DebtorsProps {

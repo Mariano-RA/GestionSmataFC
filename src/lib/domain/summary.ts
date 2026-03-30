@@ -3,6 +3,8 @@ import type { Participant, Payment, Expense, AppConfig } from '@/types';
 export interface MonthlySummary {
   collected: number;
   recordedExpenses: number;
+  includedExpensesForShare: number;
+  baseObjective: number;
   monthlyObjective: number;
   totalCosts: number;
   profit: number;
@@ -28,8 +30,12 @@ export function computeMonthlySummary(
 
   const collected = monthPayments.reduce((sum, p) => sum + p.amount, 0);
   const recordedExpenses = monthExpenses.reduce((sum, e) => sum + e.amount, 0);
-  const monthlyObjective = (config.monthlyTarget || 0) + (config.fieldRental || 0);
-  const totalCosts = recordedExpenses + monthlyObjective;
+  const includedExpensesForShare = monthExpenses
+    .filter((e) => Boolean(e.includeInMonthlyShare))
+    .reduce((sum, e) => sum + e.amount, 0);
+  const baseObjective = (config.monthlyTarget || 0) + (config.fieldRental || 0);
+  const monthlyObjective = baseObjective + includedExpensesForShare;
+  const totalCosts = recordedExpenses + baseObjective;
   const profit = collected - totalCosts;
   const progress = monthlyObjective > 0 ? (collected / monthlyObjective) * 100 : 0;
 
@@ -45,6 +51,8 @@ export function computeMonthlySummary(
   return {
     collected,
     recordedExpenses,
+    includedExpensesForShare,
+    baseObjective,
     monthlyObjective,
     totalCosts,
     profit,
@@ -116,7 +124,9 @@ export function buildDashboardCsvLines(
     'RESUMEN',
     `Recaudado;${summary.collected}`,
     `Gastos registrados;${summary.recordedExpenses}`,
-    `Objetivo + Alquiler;${summary.monthlyObjective}`,
+    `Gastos incluidos en cuota;${summary.includedExpensesForShare}`,
+    `Objetivo base + Alquiler;${summary.baseObjective}`,
+    `Objetivo del mes (incluye gastos);${summary.monthlyObjective}`,
     `Total costos;${summary.totalCosts}`,
     `Ganancia Neta;${summary.profit}`,
   ];

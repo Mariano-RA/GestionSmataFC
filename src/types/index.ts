@@ -49,7 +49,7 @@ export interface AuditLog {
   team?: Team;
 }
 
-export type ParticipantStatus = 'activo' | 'sin_laburo' | 'lesionado';
+export type ParticipantStatus = 'activo' | 'sin_laburo' | 'lesionado' | 'media_cuota';
 
 export interface Participant {
   id: number;
@@ -92,6 +92,8 @@ export interface Expense {
   amount: number;
   date: string;
   category: string;
+  /** Si es true, este gasto se suma al objetivo del mes para calcular la cuota/división. */
+  includeInMonthlyShare?: boolean;
   recordedAt: string;
 }
 
@@ -115,6 +117,8 @@ export interface MonthlyConfig {
   month: string;
   monthlyTarget: number;
   rent: number;
+  /** Total de gastos del mes que se incluyeron en la división de cuota. */
+  includedExpenses?: number | null;
   activeParticipants?: number | null;
   effectiveParticipants?: number | null;
   monthlyShare?: number | null;

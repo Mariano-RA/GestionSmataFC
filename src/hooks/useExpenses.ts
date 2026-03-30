@@ -21,9 +21,9 @@ export function useExpenses(
   }, [request, currentTeamId]);
 
   const handleAddExpense = useCallback(
-    async (name: string, amount: number, date: string, category: string) => {
+    async (name: string, amount: number, date: string, category: string, includeInMonthlyShare?: boolean) => {
       try {
-        const res = await expensesService.createExpense(request, { name, amount, date, category });
+        const res = await expensesService.createExpense(request, { name, amount, date, category, includeInMonthlyShare });
         if (res != null) {
           addToast('Gasto registrado', 'success');
           await loadExpenses();
@@ -38,9 +38,9 @@ export function useExpenses(
   );
 
   const handleUpdateExpense = useCallback(
-    async (id: number, name: string, amount: number, date: string, category: string) => {
+    async (id: number, name: string, amount: number, date: string, category: string, includeInMonthlyShare?: boolean) => {
       try {
-        const res = await expensesService.updateExpense(request, id, { name, amount, date, category });
+        const res = await expensesService.updateExpense(request, id, { name, amount, date, category, includeInMonthlyShare });
         if (res != null) {
           addToast('Gasto actualizado', 'success');
           await loadExpenses();

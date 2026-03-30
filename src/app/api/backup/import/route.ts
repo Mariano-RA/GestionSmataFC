@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
             phone: p.phone?.trim() || null,
             notes: p.notes?.trim() || null,
             active: p.active ?? true,
+            status: p.status ?? 'activo',
           },
         });
         const oldId = p.id ?? i;
@@ -74,6 +75,7 @@ export async function POST(request: NextRequest) {
             amount: exp.amount,
             date: exp.date,
             category: exp.category?.trim() || 'Otros',
+            includeInMonthlyShare: Boolean((exp as { includeInMonthlyShare?: unknown }).includeInMonthlyShare),
           },
         });
       }

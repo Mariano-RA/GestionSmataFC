@@ -121,6 +121,7 @@ export async function POST(request: NextRequest) {
       const {
         monthlyTarget,
         rent,
+        includedExpenses,
         activeParticipants,
         effectiveParticipants,
         monthlyShare,
@@ -133,14 +134,17 @@ export async function POST(request: NextRequest) {
       const computedActiveParticipants = activeTeamParticipants.length;
       const computedEffectiveParticipants =
         activeTeamParticipants.reduce(
-          (sum, p) => sum + (p.status === 'sin_laburo' ? 0 : p.status === 'lesionado' ? 0.5 : 1),
+          (sum, p) =>
+            sum +
+            (p.status === 'sin_laburo' ? 0 : p.status === 'lesionado' ? 0.5 : p.status === 'media_cuota' ? 0.5 : 1),
           0
         ) || 1;
       const snapshotActiveParticipants = activeParticipants ?? computedActiveParticipants;
       const snapshotEffectiveParticipants = effectiveParticipants ?? computedEffectiveParticipants;
+      const snapshotIncludedExpenses = includedExpenses ?? 0;
       const snapshotMonthlyShare =
         monthlyShare ??
-        ((monthlyTarget + rent) / (snapshotEffectiveParticipants > 0 ? snapshotEffectiveParticipants : 1));
+        ((monthlyTarget + rent + snapshotIncludedExpenses) / (snapshotEffectiveParticipants > 0 ? snapshotEffectiveParticipants : 1));
 
       const config = await db.$transaction(async (tx) => {
         const upserted = await tx.monthlyConfig.upsert({
@@ -148,6 +152,7 @@ export async function POST(request: NextRequest) {
           update: {
             monthlyTarget,
             rent,
+            includedExpenses: snapshotIncludedExpenses,
             activeParticipants: snapshotActiveParticipants,
             effectiveParticipants: snapshotEffectiveParticipants,
             monthlyShare: snapshotMonthlyShare,
@@ -157,6 +162,7 @@ export async function POST(request: NextRequest) {
             month,
             monthlyTarget,
             rent,
+            includedExpenses: snapshotIncludedExpenses,
             activeParticipants: snapshotActiveParticipants,
             effectiveParticipants: snapshotEffectiveParticipants,
             monthlyShare: snapshotMonthlyShare,
@@ -198,6 +204,7 @@ export async function POST(request: NextRequest) {
               month,
               monthlyTarget,
               rent,
+              includedExpenses: snapshotIncludedExpenses,
               activeParticipants: snapshotActiveParticipants,
               effectiveParticipants: snapshotEffectiveParticipants,
               monthlyShare: snapshotMonthlyShare,

@@ -53,7 +53,7 @@ export type UpdateTeamRequest = z.infer<typeof updateTeamSchema>;
 
 // ==================== PARTICIPANT SCHEMAS ====================
 
-const participantStatusSchema = z.enum(['activo', 'sin_laburo', 'lesionado']).optional().default('activo');
+const participantStatusSchema = z.enum(['activo', 'sin_laburo', 'lesionado', 'media_cuota']).optional().default('activo');
 
 export const createParticipantSchema = z.object({
   teamId: z.coerce.number().int().positive('Team ID requerido'),
@@ -70,7 +70,7 @@ export const updateParticipantSchema = z.object({
   phone: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
   active: z.boolean().optional(),
-  status: z.enum(['activo', 'sin_laburo', 'lesionado']).nullable().optional(),
+  status: z.enum(['activo', 'sin_laburo', 'lesionado', 'media_cuota']).nullable().optional(),
 });
 
 export type UpdateParticipantRequest = z.infer<typeof updateParticipantSchema>;
@@ -83,6 +83,7 @@ export const createExpenseSchema = z.object({
   amount: z.coerce.number('Monto requerido').positive('Debe ser positivo'),
   date: z.string('Fecha requerida').min(1, 'Fecha requerida'),
   category: z.string().optional(),
+  includeInMonthlyShare: z.coerce.boolean().optional().default(false),
 });
 
 export type CreateExpenseRequest = z.infer<typeof createExpenseSchema>;
@@ -92,6 +93,7 @@ export const updateExpenseSchema = z.object({
   amount: z.coerce.number('Monto requerido').positive('Debe ser positivo').optional(),
   date: z.string('Fecha requerida').min(1, 'Fecha requerida').optional(),
   category: z.string().nullable().optional(),
+  includeInMonthlyShare: z.coerce.boolean().optional(),
 });
 
 export type UpdateExpenseRequest = z.infer<typeof updateExpenseSchema>;
@@ -120,6 +122,7 @@ export const updatePaymentSchema = z.object({
 export const monthlyConfigSchema = z.object({
   monthlyTarget: z.coerce.number().positive('monthlyTarget debe ser positivo'),
   rent: z.coerce.number().nonnegative('rent no puede ser negativo'),
+  includedExpenses: z.coerce.number().nonnegative().optional(),
   activeParticipants: z.coerce.number().int().positive().optional(),
   effectiveParticipants: z.coerce.number().positive().optional(),
   monthlyShare: z.coerce.number().nonnegative().optional(),
@@ -165,7 +168,7 @@ const importParticipantSchema = z.object({
   phone: z.string().optional(),
   notes: z.string().optional(),
   active: z.boolean().optional(),
-  status: z.enum(['activo', 'sin_laburo', 'lesionado']).optional(),
+  status: z.enum(['activo', 'sin_laburo', 'lesionado', 'media_cuota']).optional(),
 });
 
 const importPaymentSchema = z.object({
@@ -181,6 +184,7 @@ const importExpenseSchema = z.object({
   amount: z.coerce.number().int().nonnegative(),
   date: z.string().min(1),
   category: z.string().optional(),
+  includeInMonthlyShare: z.coerce.boolean().optional(),
 });
 
 const importConfigSchema = z.object({

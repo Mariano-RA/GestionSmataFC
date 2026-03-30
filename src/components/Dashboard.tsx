@@ -4,7 +4,7 @@ import { formatCurrency, getMonthName } from '@/lib/utils';
 import { computeMonthlySummary, buildDashboardCsvLines } from '@/lib/domain/summary';
 import ExpenseTrend from './ExpenseTrend';
 import PaymentStats from './PaymentStats';
-import type { Payment, Participant, Expense, AppConfig } from '@/types';
+import type { Payment, Participant, Expense, AppConfig, ParticipantStatus } from '@/types';
 
 interface DashboardProps {
   currentMonth: string;
@@ -57,6 +57,14 @@ export default function Dashboard({
 
   const isProfitPositive = summary.profit >= 0;
 
+  const activeByStatus = participants
+    .filter((p) => p.active)
+    .reduce<Record<string, number>>((acc, p) => {
+      const s = (p.status as ParticipantStatus) || 'activo';
+      acc[s] = (acc[s] ?? 0) + 1;
+      return acc;
+    }, {});
+
   return (
     <div className="tab-content active">
       <div className="stats">
@@ -93,10 +101,29 @@ export default function Dashboard({
         <div style={{ fontSize: '14px', lineHeight: '1.8', color: 'var(--text)' }}>
           <p>🎯 Objetivo base: <strong>{formatCurrency(config.monthlyTarget)}</strong></p>
           <p>🏟️ Alquileres: <strong>{formatCurrency(config.fieldRental)}</strong></p>
+          <p>🧾 Gastos incluidos en cuota: <strong>{formatCurrency(summary.includedExpensesForShare)}</strong></p>
+          <p>🎯 Objetivo del mes (incluye gastos): <strong>{formatCurrency(summary.monthlyObjective)}</strong></p>
           <p>💸 Gastos registrados: <strong>{formatCurrency(summary.recordedExpenses)}</strong></p>
           <p>💰 Recaudado: <strong>{formatCurrency(summary.collected)}</strong></p>
           <p>📈 Ganancia Neta: <strong style={{ color: isProfitPositive ? 'var(--success)' : 'var(--danger)' }}>{formatCurrency(summary.profit)}</strong></p>
           <p>⚠️ Deuda Pendiente: <strong>{formatCurrency(summary.totalDebt)}</strong></p>
+        </div>
+      </div>
+
+      <div style={{ background: 'var(--bg-primary)', padding: '15px', borderRadius: '8px', marginBottom: '15px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', border: '1px solid var(--border)' }}>
+        <h3 style={{ marginBottom: '12px', color: 'var(--heading)' }}>👥 Jugadores por estado (activos)</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px' }}>
+          {[
+            { key: 'activo', label: 'Activo' },
+            { key: 'media_cuota', label: 'Media cuota' },
+            { key: 'lesionado', label: 'Lesionado' },
+            { key: 'sin_laburo', label: 'Sin trabajo' },
+          ].map((s) => (
+            <div key={s.key} style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px 12px' }}>
+              <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '6px' }}>{s.label}</div>
+              <div style={{ fontSize: '22px', fontWeight: 'bold', color: 'var(--heading)' }}>{activeByStatus[s.key] ?? 0}</div>
+            </div>
+          ))}
         </div>
       </div>
 

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { logger } from '@/lib/logger';
 import { DEFAULT_CONFIG } from '@/lib/utils';
-import type { Participant, ParticipantMonthlyStatus } from '@/types';
+import type { Participant, ParticipantMonthlyStatus, ParticipantStatus } from '@/types';
 import type { RequestFn } from '@/services/types';
 import { useParticipants } from '@/hooks/useParticipants';
 import { usePayments } from '@/hooks/usePayments';
@@ -90,10 +90,21 @@ export function useTeamData(
   }, [currentTeamId]); // eslint-disable-line react-hooks/exhaustive-deps -- solo recargar al cambiar equipo
 
   const { config } = configHook;
-  const monthlyObjective = (config.monthlyTarget || 0) + (config.fieldRental || 0);
+  const monthIncludedExpenses = expensesHook.expenses
+    .filter((e) => e.date.startsWith(currentMonth) && Boolean(e.includeInMonthlyShare))
+    .reduce((sum, e) => sum + e.amount, 0);
+  const monthlyObjective = (config.monthlyTarget || 0) + (config.fieldRental || 0) + monthIncludedExpenses;
+  const baseMonthlyObjective = (config.monthlyTarget || 0) + (config.fieldRental || 0);
+
+  const getStatusWeight = (status?: ParticipantStatus | null) => {
+    if (status === 'sin_laburo') return 0;
+    if (status === 'lesionado') return 0.5;
+    if (status === 'media_cuota') return 0.5;
+    return 1;
+  };
   const effectiveParticipants =
     participants.filter(p => p.active).reduce(
-      (sum, p) => sum + (p.status === 'sin_laburo' ? 0 : p.status === 'lesionado' ? 0.5 : 1),
+      (sum, p) => sum + getStatusWeight(p.status as ParticipantStatus),
       0
     ) || 1;
   const monthlyShare = monthlyObjective / effectiveParticipants;
@@ -103,11 +114,11 @@ export function useTeamData(
   const getObjectiveForMonth = useCallback(
     (month: string): number => {
       const exact = monthlyConfigsSorted.find(cfg => cfg.month === month);
-      if (exact) return (exact.monthlyTarget || 0) + (exact.rent || 0);
+      if (exact) return (exact.monthlyTarget || 0) + (exact.rent || 0) + (exact.includedExpenses || 0);
       const previous = monthlyConfigsSorted.filter(cfg => cfg.month < month);
       if (previous.length > 0) {
         const last = previous[previous.length - 1];
-        return (last.monthlyTarget || 0) + (last.rent || 0);
+        return (last.monthlyTarget || 0) + (last.rent || 0) + (last.includedExpenses || 0);
       }
       return monthlyObjective;
     },
@@ -130,6 +141,7 @@ export function useTeamData(
       if (!p.active) return 0;
       if (p.status === 'sin_laburo') return 0;
       if (p.status === 'lesionado') return monthlyShare / 2;
+      if (p.status === 'media_cuota') return monthlyShare / 2;
       return monthlyShare;
     },
     [monthlyShare]
@@ -148,6 +160,7 @@ export function useTeamData(
       const participantsForMonth = getEffectiveParticipantsForMonth(month);
       const share = participantsForMonth > 0 ? objective / participantsForMonth : 0;
       if (statusForMonth === 'lesionado') return share / 2;
+      if (statusForMonth === 'media_cuota') return share / 2;
       return share;
     },
     [getObjectiveForMonth, getEffectiveParticipantsForMonth, participantMonthlyStatuses]
@@ -161,6 +174,7 @@ export function useTeamData(
         body: {
           monthlyTarget: config.monthlyTarget,
           rent: config.fieldRental,
+          includedExpenses: monthIncludedExpenses,
           activeParticipants,
           effectiveParticipants,
           monthlyShare,
@@ -182,6 +196,7 @@ export function useTeamData(
     currentMonth,
     config.monthlyTarget,
     config.fieldRental,
+    monthIncludedExpenses,
     activeParticipants,
     effectiveParticipants,
     monthlyShare,
@@ -208,6 +223,8 @@ export function useTeamData(
     getRequiredAmount,
     getRequiredAmountForMonth,
     effectiveParticipants,
+    baseMonthlyObjective,
+    monthIncludedExpenses,
     handleAddParticipant: participantsHook.handleAddParticipant,
     handleRemoveParticipant: participantsHook.handleRemoveParticipant,
     handleUpdateParticipant: participantsHook.handleUpdateParticipant,

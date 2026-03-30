@@ -9,8 +9,8 @@ interface ExpensesProps {
   expenses: Expense[];
   currentMonth: string;
   expenseCategories?: string[];
-  onAdd: (name: string, amount: number, date: string, category: string) => void;
-  onUpdate: (id: number, name: string, amount: number, date: string, category: string) => void;
+  onAdd: (name: string, amount: number, date: string, category: string, includeInMonthlyShare?: boolean) => void;
+  onUpdate: (id: number, name: string, amount: number, date: string, category: string, includeInMonthlyShare?: boolean) => void;
   onDelete: (id: number) => void;
   addToast: (message: string, type: 'success' | 'error' | 'info') => void;
 }
@@ -29,6 +29,7 @@ export default function Expenses({
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const categories = expenseCategories?.length ? expenseCategories : DEFAULT_EXPENSE_CATEGORIES;
   const [category, setCategory] = useState(categories[0] ?? 'Otros');
+  const [includeInMonthlyShare, setIncludeInMonthlyShare] = useState(false);
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -40,6 +41,7 @@ export default function Expenses({
     setAmount('');
     setDate(new Date().toISOString().split('T')[0]);
     setCategory(categories[0] ?? 'Otros');
+    setIncludeInMonthlyShare(false);
     setShowModal(true);
   };
 
@@ -49,6 +51,7 @@ export default function Expenses({
     setAmount(String(e.amount));
     setDate(e.date);
     setCategory(e.category);
+    setIncludeInMonthlyShare(Boolean(e.includeInMonthlyShare));
     setShowModal(true);
   };
 
@@ -63,7 +66,7 @@ export default function Expenses({
       return;
     }
     try {
-      await onAdd(name, Number(amount), date, category);
+      await onAdd(name, Number(amount), date, category, includeInMonthlyShare);
       closeModal();
     } catch (error) {
       console.error('Error in handleAdd:', error);
@@ -72,7 +75,7 @@ export default function Expenses({
 
   const handleSave = () => {
     if (editingId !== null && name.trim() && amount && date) {
-      onUpdate(editingId, name, Number(amount), date, category);
+      onUpdate(editingId, name, Number(amount), date, category, includeInMonthlyShare);
       closeModal();
     }
   };
@@ -209,6 +212,17 @@ export default function Expenses({
                 onChange={(e) => setDate(e.target.value)}
               />
             </div>
+          </div>
+
+          <div className="form-group">
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={includeInMonthlyShare}
+                onChange={(e) => setIncludeInMonthlyShare(e.target.checked)}
+              />
+              Contar este gasto en la división mensual (cuota)
+            </label>
           </div>
 
           <button className="btn btn-success" onClick={editingId === null ? handleAdd : handleSave}>

@@ -26,6 +26,11 @@ export async function checkRateLimit(
   identifier: string,
   ipAddress?: string
 ): Promise<{ allowed: boolean; remainingAttempts?: number; resetTime?: Date }> {
+  // En desarrollo local evitamos dejar al usuario "clavado" por rate limit.
+  if (process.env.NODE_ENV !== 'production') {
+    return { allowed: true, remainingAttempts: RATE_LIMIT_CONFIG.maxAttempts };
+  }
+
   const now = new Date();
   const windowStart = new Date(now.getTime() - RATE_LIMIT_CONFIG.windowMinutes * 60 * 1000);
 
