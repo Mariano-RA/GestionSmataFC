@@ -202,6 +202,34 @@ body {
   padding: 15px 15px 120px 15px;
 }
 
+/* Participantes (tabla): más ancho que el layout móvil base para evitar scroll horizontal innecesario */
+.container.container--wide {
+  max-width: min(1200px, calc(100vw - 24px));
+}
+
+.participants-toolbar {
+  margin-bottom: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.participants-toolbar-sort {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.participants-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-left: auto;
+  align-items: center;
+}
+
 .stats {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -762,6 +790,73 @@ select:focus {
   color: var(--border);
   background: none;
   border: none;
+}
+
+/* Participantes: tabla solo en pantallas anchas; en móvil se muestran tarjetas */
+.participants-table-desktop-only {
+  display: block;
+}
+
+.participants-table-mobile-fallback {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .participants-table-desktop-only {
+    display: none;
+  }
+
+  .participants-table-mobile-fallback {
+    display: block;
+  }
+
+  .participants-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .participants-toolbar-sort {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .participants-toolbar-sort label {
+    margin-bottom: 0;
+  }
+
+  .participants-toolbar-sort select.participants-sort-select {
+    width: 100% !important;
+    max-width: none;
+  }
+
+  .participants-toolbar-actions {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    margin-left: 0 !important;
+    gap: 8px;
+  }
+
+  .participants-toolbar-actions .participants-view-toggle {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .participants-toolbar-actions .participants-add-btn {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+
+  .participants-mobile-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .participants-mobile-table {
+    gap: 10px;
+  }
 }
 
 @media (max-width: 600px) {

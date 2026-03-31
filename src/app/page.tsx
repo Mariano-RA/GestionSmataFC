@@ -41,7 +41,7 @@ function HomeContent({
 
   return (
     <>
-      <div className="container">
+      <div className={activeTab === 'participants' ? 'container container--wide' : 'container'}>
         <MonthlyProgressBarContainer />
 
         {activeTab === 'dashboard' && <DashboardContainer />}
