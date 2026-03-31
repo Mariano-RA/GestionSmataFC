@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { computeMonthlySummary, computeMonthComparison } from './summary';
+import {
+  computeMonthlySummary,
+  computeMonthComparison,
+  deriveOperationalStartMonth,
+  computeMonthAnalysisMetrics,
+} from './summary';
 import type { Participant, Payment, Expense, AppConfig } from '@/types';
 
 const defaultConfig: AppConfig = {
@@ -102,5 +107,44 @@ describe('computeMonthComparison', () => {
     expect(mar.profit).toBe(50);
     expect(mar.paymentCount).toBe(1);
     expect(mar.expenseCount).toBe(1);
+  });
+});
+
+describe('deriveOperationalStartMonth', () => {
+  it('toma el mínimo entre pagos, gastos y configs', () => {
+    expect(
+      deriveOperationalStartMonth('2024-06', [{ date: '2024-03-01' }], [{ date: '2024-04-01' }], [{ month: '2024-02' }])
+    ).toBe('2024-02');
+  });
+
+  it('sin datos usa el mes actual', () => {
+    expect(deriveOperationalStartMonth('2024-05', [], [], [])).toBe('2024-05');
+  });
+});
+
+describe('computeMonthAnalysisMetrics', () => {
+  it('suma gastos registrados + base del mes', () => {
+    const payments: Payment[] = [
+      { id: 1, teamId: 1, participantId: 1, date: '2024-03-10', amount: 5000, recordedAt: '' },
+    ];
+    const expenses: Expense[] = [
+      { id: 1, teamId: 1, name: 'Arb', amount: 200, date: '2024-03-01', category: 'Otros', recordedAt: '' },
+    ];
+    const m = computeMonthAnalysisMetrics(payments, expenses, '2024-03', () => 1500, '2024-01');
+    expect(m.recordedExpenses).toBe(200);
+    expect(m.baseCosts).toBe(1500);
+    expect(m.totalCosts).toBe(1700);
+    expect(m.profit).toBe(3300);
+  });
+
+  it('antes del inicio operativo devuelve ceros', () => {
+    const m = computeMonthAnalysisMetrics([], [], '2024-01', () => 1000, '2024-03');
+    expect(m).toMatchObject({
+      collected: 0,
+      totalCosts: 0,
+      profit: 0,
+      paymentCount: 0,
+      expenseCount: 0,
+    });
   });
 });

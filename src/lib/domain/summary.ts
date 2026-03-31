@@ -85,6 +85,73 @@ export function computeMonthComparison(
   };
 }
 
+/**
+ * Primer mes con actividad registrada (pagos, gastos o cierre/config mensual).
+ * Si no hay ninguno, devuelve `currentMonth` para no inventar meses previos con cuotas.
+ */
+export function deriveOperationalStartMonth(
+  currentMonth: string,
+  payments: { date: string }[],
+  expenses: { date: string }[],
+  monthlyConfigs: { month: string }[]
+): string {
+  const months: string[] = [];
+  for (const p of payments) months.push(p.date.slice(0, 7));
+  for (const e of expenses) months.push(e.date.slice(0, 7));
+  for (const c of monthlyConfigs) months.push(c.month);
+  if (months.length === 0) return currentMonth;
+  return months.reduce((min, m) => (m < min ? m : min), months[0]);
+}
+
+/**
+ * Métricas de Análisis alineadas al dashboard: costos = gastos registrados + objetivo base + alquiler del mes.
+ */
+export function computeMonthAnalysisMetrics(
+  payments: Payment[],
+  expenses: Expense[],
+  month: string,
+  getBaseObjectiveForMonth: (month: string) => number,
+  operationalStartMonth: string
+): {
+  collected: number;
+  recordedExpenses: number;
+  baseCosts: number;
+  totalCosts: number;
+  profit: number;
+  paymentCount: number;
+  expenseCount: number;
+} {
+  if (month < operationalStartMonth) {
+    return {
+      collected: 0,
+      recordedExpenses: 0,
+      baseCosts: 0,
+      totalCosts: 0,
+      profit: 0,
+      paymentCount: 0,
+      expenseCount: 0,
+    };
+  }
+
+  const monthPayments = payments.filter(p => p.date.startsWith(month));
+  const monthExpenses = expenses.filter(e => e.date.startsWith(month));
+  const collected = monthPayments.reduce((sum, p) => sum + p.amount, 0);
+  const recordedExpenses = monthExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const baseCosts = getBaseObjectiveForMonth(month);
+  const totalCosts = recordedExpenses + baseCosts;
+  const profit = collected - totalCosts;
+
+  return {
+    collected,
+    recordedExpenses,
+    baseCosts,
+    totalCosts,
+    profit,
+    paymentCount: monthPayments.length,
+    expenseCount: monthExpenses.length,
+  };
+}
+
 export interface DashboardCsvRow {
   type: 'payment' | 'expense' | 'summary';
   data: string[];

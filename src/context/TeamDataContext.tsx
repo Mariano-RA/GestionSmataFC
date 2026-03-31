@@ -23,6 +23,7 @@ export interface TeamDataContextValue {
   monthlyShare: number;
   getRequiredAmount: (p: Participant) => number;
   getRequiredAmountForMonth: (p: Participant, month: string) => number;
+  getBaseObjectiveForMonth: (month: string) => number;
   effectiveParticipants: number;
   baseMonthlyObjective: number;
   monthIncludedExpenses: number;

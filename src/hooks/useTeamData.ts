@@ -125,6 +125,21 @@ export function useTeamData(
     [monthlyConfigsSorted, monthlyObjective]
   );
 
+  /** Objetivo base + alquiler del mes (sin gastos incluidos en cuota), mismo criterio que `computeMonthlySummary.baseObjective`. */
+  const getBaseObjectiveForMonth = useCallback(
+    (month: string): number => {
+      const exact = monthlyConfigsSorted.find(cfg => cfg.month === month);
+      if (exact) return (exact.monthlyTarget || 0) + (exact.rent || 0);
+      const previous = monthlyConfigsSorted.filter(cfg => cfg.month < month);
+      if (previous.length > 0) {
+        const last = previous[previous.length - 1];
+        return (last.monthlyTarget || 0) + (last.rent || 0);
+      }
+      return (config.monthlyTarget || 0) + (config.fieldRental || 0);
+    },
+    [monthlyConfigsSorted, config.monthlyTarget, config.fieldRental]
+  );
+
   const getEffectiveParticipantsForMonth = useCallback(
     (month: string): number => {
       const exact = monthlyConfigsSorted.find(cfg => cfg.month === month);
@@ -222,6 +237,7 @@ export function useTeamData(
     monthlyShare,
     getRequiredAmount,
     getRequiredAmountForMonth,
+    getBaseObjectiveForMonth,
     effectiveParticipants,
     baseMonthlyObjective,
     monthIncludedExpenses,
