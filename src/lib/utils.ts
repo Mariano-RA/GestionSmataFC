@@ -36,6 +36,12 @@ export function formatLocalYearMonth(date: Date = new Date()): string {
   return `${y}-${m}`;
 }
 
+/** ISO instant (ej. desde API) → valor para `input type="datetime-local"` en hora local. */
+export function isoInstantToDatetimeLocalValue(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+
 /**
  * Parsea YYYY-MM-DD a Date en medianoche local.
  * Evita el comportamiento de `new Date('YYYY-MM-DD')` que se interpreta como UTC y puede correrse de día.

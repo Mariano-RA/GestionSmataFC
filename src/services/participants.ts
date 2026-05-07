@@ -8,18 +8,27 @@ export async function getParticipants(request: RequestFn): Promise<Participant[]
 
 export async function createParticipant(
   request: RequestFn,
-  body: { name: string; phone: string; notes: string; status?: string }
+  body: { name: string; phone: string; notes: string; status?: string; joinDate?: string }
 ): Promise<Participant | null> {
+  const payload: Record<string, unknown> = {
+    name: body.name,
+    phone: body.phone,
+    notes: body.notes,
+    status: body.status || 'activo',
+  };
+  if (body.joinDate != null && body.joinDate !== '') payload.joinDate = body.joinDate;
   return request<Participant>('/api/participants', {
     method: 'POST',
-    body: { name: body.name, phone: body.phone, notes: body.notes, status: body.status || 'activo' },
+    body: payload,
   });
 }
 
 export async function updateParticipant(
   request: RequestFn,
   id: number,
-  body: { name?: string; phone?: string; notes?: string; status?: string | null } | { active: boolean }
+  body:
+    | { name?: string; phone?: string; notes?: string; status?: string | null; joinDate?: string }
+    | { active: boolean }
 ): Promise<Participant | null> {
   return request<Participant>(`/api/participants/${id}`, {
     method: 'PATCH',

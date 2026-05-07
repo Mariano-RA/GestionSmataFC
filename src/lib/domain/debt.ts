@@ -73,6 +73,8 @@ export function computeParticipantsWithDebtStatus(
       // Mostrar solo participantes relevantes para el mes (evita colar inactivos sin cuota)
       if (p.required > 0) return true;
       if (p.paid > 0) return true;
+      // Activos sin trabajo: cuota 0 pero deben listarse (p. ej. copiar WhatsApp)
+      if (p.active && p.status === 'sin_laburo') return true;
       return false;
     })
     .sort((a, b) => b.debt - a.debt);

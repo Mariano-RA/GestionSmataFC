@@ -142,13 +142,18 @@ export function useTeamData(
 
   const getEffectiveParticipantsForMonth = useCallback(
     (month: string): number => {
+      // Mes seleccionado en la app: siempre usar suma ponderada actual (activo 1, media/lesión 0.5, sin_laburo 0).
+      // MonthlyConfig.effectiveParticipants puede quedar entero viejo (p. ej. solo “cantidad activos”) y romper el cociente.
+      if (month === currentMonth) {
+        return effectiveParticipants;
+      }
       const exact = monthlyConfigsSorted.find(cfg => cfg.month === month);
       if (exact?.effectiveParticipants && exact.effectiveParticipants > 0) {
         return exact.effectiveParticipants;
       }
       return effectiveParticipants;
     },
-    [monthlyConfigsSorted, effectiveParticipants]
+    [monthlyConfigsSorted, effectiveParticipants, currentMonth]
   );
 
   const getRequiredAmount = useCallback(

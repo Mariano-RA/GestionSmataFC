@@ -28,9 +28,9 @@ export interface TeamDataContextValue {
   effectiveParticipants: number;
   baseMonthlyObjective: number;
   monthIncludedExpenses: number;
-  handleAddParticipant: (name: string, phone: string, notes: string, status?: string) => Promise<void>;
+  handleAddParticipant: (name: string, phone: string, notes: string, status?: string, joinDateIso?: string) => Promise<void>;
   handleRemoveParticipant: (id: number) => Promise<void>;
-  handleUpdateParticipant: (id: number, name: string, phone: string, notes: string, status?: string | null) => Promise<void>;
+  handleUpdateParticipant: (id: number, name: string, phone: string, notes: string, status?: string | null, joinDateIso?: string) => Promise<void>;
   handleToggleParticipant: (id: number) => Promise<void>;
   handleAddPayment: (participantId: number, date: string, amount: number, method: string, note: string, appliedMonth?: string) => Promise<void>;
   handleDeletePayment: (id: number) => Promise<void>;

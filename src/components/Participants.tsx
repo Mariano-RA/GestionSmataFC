@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { normalizeName } from '@/lib/utils';
+import { isoInstantToDatetimeLocalValue, normalizeName } from '@/lib/utils';
 import type { Participant, Payment, ParticipantStatus } from '@/types';
 
 const STATUS_LABELS: Record<ParticipantStatus, string> = {
@@ -205,8 +205,8 @@ interface ParticipantsProps {
   payments: Payment[];
   currentMonth: string;
   getRequiredAmount: (p: Participant) => number;
-  onAdd: (name: string, phone: string, notes: string, status?: ParticipantStatus) => void;
-  onUpdate: (id: number, name: string, phone: string, notes: string, status?: ParticipantStatus | null) => void;
+  onAdd: (name: string, phone: string, notes: string, status?: ParticipantStatus, joinDateIso?: string) => void;
+  onUpdate: (id: number, name: string, phone: string, notes: string, status?: ParticipantStatus | null, joinDateIso?: string) => void;
   onRemove: (id: number) => void;
   onToggle: (id: number) => void;
   onShowHistory: (id: number, name: string) => void;
@@ -230,6 +230,7 @@ export default function Participants({
   const [newPhone, setNewPhone] = useState('');
   const [newNotes, setNewNotes] = useState('');
   const [newStatus, setNewStatus] = useState<ParticipantStatus>('activo');
+  const [joinDateLocal, setJoinDateLocal] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [showModal, setShowModal] = useState(false);
 
@@ -239,6 +240,7 @@ export default function Participants({
     setNewPhone('');
     setNewNotes('');
     setNewStatus('activo');
+    setJoinDateLocal('');
     setShowModal(true);
   };
 
@@ -252,11 +254,14 @@ export default function Participants({
       return;
     }
     try {
-      await onAdd(normalizeName(newName), newPhone, newNotes, newStatus);
+      const joinIso =
+        joinDateLocal.trim() !== '' ? new Date(joinDateLocal).toISOString() : undefined;
+      await onAdd(normalizeName(newName), newPhone, newNotes, newStatus, joinIso);
       closeModal();
       setNewName('');
       setNewPhone('');
       setNewNotes('');
+      setJoinDateLocal('');
     } catch (error) {
       console.error('Error in handleAdd:', error);
     }
@@ -267,12 +272,20 @@ export default function Participants({
       return;
     }
     try {
-      await onUpdate(editingId, normalizeName(newName), newPhone, newNotes, newStatus);
+      await onUpdate(
+        editingId,
+        normalizeName(newName),
+        newPhone,
+        newNotes,
+        newStatus,
+        new Date(joinDateLocal).toISOString()
+      );
       closeModal();
       setEditingId(null);
       setNewName('');
       setNewPhone('');
       setNewNotes('');
+      setJoinDateLocal('');
     } catch (error) {
       console.error('Error in handleSave:', error);
     }
@@ -284,6 +297,7 @@ export default function Participants({
     setNewPhone(p.phone || '');
     setNewNotes(p.notes || '');
     setNewStatus((p.status as ParticipantStatus) || 'activo');
+    setJoinDateLocal(isoInstantToDatetimeLocalValue(p.joinDate));
     setShowModal(true);
   };
 
@@ -546,6 +560,20 @@ export default function Participants({
               value={newNotes}
               onChange={e => setNewNotes(e.target.value)}
             />
+          </div>
+          <div className="form-group">
+            <label>Fecha de alta {editingId === null ? '(opcional)' : ''}</label>
+            <input
+              type="datetime-local"
+              value={joinDateLocal}
+              onChange={e => setJoinDateLocal(e.target.value)}
+              style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text)' }}
+            />
+            {editingId === null && (
+              <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '6px' }}>
+                Si no cargás nada, se usa la fecha y hora actual. Afecta la cuota del mes de alta (regla del primer sábado).
+              </p>
+            )}
           </div>
           <button className="btn btn-success" onClick={editingId === null ? handleAdd : handleSave}>
             {editingId === null ? '✅ Agregar' : '💾 Guardar Cambios'}

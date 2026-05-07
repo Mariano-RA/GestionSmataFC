@@ -117,6 +117,8 @@ export async function GET(request: NextRequest) {
     toMonth: maxMonth,
     affectedCount: affected.length,
     rows: affected,
+    /** Todos los jugadores del equipo (misma forma que rows); permite editar joinDate aunque affectedCount sea 0 */
+    allRows: rows,
   });
 }
 

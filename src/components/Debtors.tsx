@@ -110,6 +110,9 @@ export default function Debtors({
               const header = `Mes: ${getMonthName(currentMonth)} - Cuota: ${formatCurrency(monthlyShare)}`;
               const listado = allParticipantsStatus
                 .map(p => {
+                  if ((p.status as ParticipantStatus) === 'sin_laburo') {
+                    return `${normalizeName(p.name)} (sin trabajo)`;
+                  }
                   if (p.required > 0) {
                     return p.paid === 0 ? normalizeName(p.name) : `${normalizeName(p.name)}: ${formatCurrency(p.paid)}`;
                   }

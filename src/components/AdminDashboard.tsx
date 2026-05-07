@@ -11,6 +11,7 @@ import AdminStats from './AdminStats';
 import AdminLogs from './AdminLogs';
 import toast from 'react-hot-toast';
 import { logger } from '@/lib/logger';
+import { addMonths, getCurrentMonth, isoInstantToDatetimeLocalValue } from '@/lib/utils';
 
 type AdminTab = 'dashboard' | 'users' | 'teams' | 'assignments' | 'stats' | 'logs';
 
@@ -85,6 +86,7 @@ interface DebtAuditResponse {
   toMonth: string;
   affectedCount: number;
   rows: DebtAuditRow[];
+  allRows: DebtAuditRow[];
 }
 
 /** useApi devuelve ya el .data del API (objeto de stats), no el envoltorio */
@@ -104,6 +106,15 @@ export default function AdminDashboard() {
   const [auditLoading, setAuditLoading] = useState(false);
   const [auditApplyingFix, setAuditApplyingFix] = useState(false);
   const [auditResult, setAuditResult] = useState<DebtAuditResponse | null>(null);
+  const [joinDateDrafts, setJoinDateDrafts] = useState<Record<number, string>>({});
+  const [joinDateSavingId, setJoinDateSavingId] = useState<number | null>(null);
+  const [snapshotParticipantId, setSnapshotParticipantId] = useState('');
+  const [snapshotMonth, setSnapshotMonth] = useState(() => getCurrentMonth());
+  const [snapshotSaving, setSnapshotSaving] = useState(false);
+  const [snapshotClearTeamIds, setSnapshotClearTeamIds] = useState('');
+  const [snapshotClearSaving, setSnapshotClearSaving] = useState(false);
+  const [snapshotClosePreviousMonth, setSnapshotClosePreviousMonth] = useState(true);
+  const [snapshotCloseCurrentMonth, setSnapshotCloseCurrentMonth] = useState(true);
 
   const downloadFullBackup = async () => {
     try {
@@ -202,6 +213,140 @@ export default function AdminDashboard() {
       logger.error('Error running debt audit', error);
     } finally {
       setAuditLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!auditResult?.allRows?.length) {
+      setJoinDateDrafts({});
+      return;
+    }
+    const next: Record<number, string> = {};
+    for (const r of auditResult.allRows) {
+      next[r.participantId] = isoInstantToDatetimeLocalValue(r.joinDate);
+    }
+    setJoinDateDrafts(next);
+  }, [auditResult]);
+
+  const mutateMonthlySnapshot = async (action: 'delete' | 'set_active') => {
+    const participantId = parseInt(snapshotParticipantId.trim(), 10);
+    if (!participantId || Number.isNaN(participantId)) {
+      toast.error('Indicá un ID de jugador válido');
+      return;
+    }
+    const month = snapshotMonth.trim();
+    if (!/^\d{4}-\d{2}$/.test(month)) {
+      toast.error('El mes debe tener formato YYYY-MM');
+      return;
+    }
+    if (action === 'delete') {
+      const ok = confirm(
+        `¿Eliminar el snapshot de ${month} para el jugador ${participantId}? ` +
+          'Después de eso la cuota del mes se calcula con las reglas normales (fecha de alta, estado actual).'
+      );
+      if (!ok) return;
+    }
+    try {
+      setSnapshotSaving(true);
+      const res = await request<unknown>('/api/admin/participant-monthly-status', {
+        method: 'POST',
+        body: {
+          action,
+          teamId: auditTeamId,
+          participantId,
+          month,
+        },
+        disableAutoParams: true,
+      });
+      if (res == null) throw new Error('Sin respuesta');
+      toast.success(action === 'delete' ? 'Snapshot eliminado' : 'Snapshot marcado como activo');
+      await runDebtAudit();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Error al modificar snapshot');
+      logger.error('mutateMonthlySnapshot', error);
+    } finally {
+      setSnapshotSaving(false);
+    }
+  };
+
+  const clearAllSnapshotsForTeams = async () => {
+    const ids = snapshotClearTeamIds
+      .split(/[\s,;]+/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((s) => parseInt(s, 10))
+      .filter((n) => !Number.isNaN(n) && n > 0);
+    const unique = [...new Set(ids)];
+    if (unique.length === 0) {
+      toast.error('Indicá al menos un Team ID (números separados por coma)');
+      return;
+    }
+    const closeMonths: string[] = [];
+    if (snapshotClosePreviousMonth) closeMonths.push(addMonths(getCurrentMonth(), -1));
+    if (snapshotCloseCurrentMonth) closeMonths.push(getCurrentMonth());
+    const uniqueCloseMonths = [...new Set(closeMonths)];
+    const closeHint =
+      uniqueCloseMonths.length > 0
+        ? `\n\nLuego se ejecutará cierre de mes (objetivo/alquiler/gastos en cuota desde BD) para: ${uniqueCloseMonths.join(', ')}.`
+        : '';
+
+    const ok = confirm(
+      `¿BORRAR TODOS los snapshots mensuales de los equipos ${unique.join(', ')}?\n\n` +
+        'No se tocan pagos, jugadores ni gastos.' +
+        closeHint
+    );
+    if (!ok) return;
+    try {
+      setSnapshotClearSaving(true);
+      const res = await request<{
+        deletedCount: number;
+        teamIds: number[];
+        monthsClosed: { teamId: number; month: string }[];
+      }>('/api/admin/participant-monthly-status/clear', {
+        method: 'POST',
+        body: {
+          teamIds: unique,
+          ...(uniqueCloseMonths.length > 0 ? { closeMonths: uniqueCloseMonths } : {}),
+        },
+        disableAutoParams: true,
+      });
+      if (res == null) throw new Error('Sin respuesta');
+      const closedMsg =
+        res.monthsClosed?.length > 0
+          ? ` Cierres de mes: ${res.monthsClosed.length} (combinación equipo × mes).`
+          : '';
+      toast.success(`Eliminados ${res.deletedCount} snapshots.${closedMsg}`);
+      await runDebtAudit();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Error al borrar snapshots');
+      logger.error('clearAllSnapshotsForTeams', error);
+    } finally {
+      setSnapshotClearSaving(false);
+    }
+  };
+
+  const saveParticipantJoinDate = async (participantId: number) => {
+    const draft = joinDateDrafts[participantId];
+    if (draft == null || draft === '') {
+      toast.error('Indicá una fecha válida');
+      return;
+    }
+    try {
+      setJoinDateSavingId(participantId);
+      const iso = new Date(draft).toISOString();
+      const res = await request<unknown>(`/api/participants/${participantId}`, {
+        method: 'PATCH',
+        body: { teamId: auditTeamId, joinDate: iso },
+        disableAutoParams: true,
+      });
+      if (res == null) throw new Error('No se pudo guardar');
+      toast.success('Fecha de alta actualizada');
+      await runDebtAudit();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Error guardando fecha de alta');
+      logger.error('Error saving joinDate', error);
+    } finally {
+      setJoinDateSavingId(null);
     }
   };
 
@@ -409,8 +554,186 @@ export default function AdminDashboard() {
                             )}
                           </div>
                         )}
+
+                        {auditResult.allRows && auditResult.allRows.length > 0 && (
+                          <div style={{ marginTop: '16px', paddingTop: '14px', borderTop: '1px solid var(--border)' }}>
+                            <h4 style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--heading)', marginBottom: '8px' }}>
+                              📅 Corregir fecha de alta (todos los jugadores del equipo)
+                            </h4>
+                            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '10px' }}>
+                              Ajustá la fecha/hora para que coincida con cuándo debe aplicarse la regla del primer sábado del mes de alta. Requiere permiso de edición en ese equipo (y estar asignado al mismo).
+                            </p>
+                            <div
+                              style={{
+                                maxHeight: '280px',
+                                overflowY: 'auto',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '8px',
+                              }}
+                            >
+                              {auditResult.allRows.map((r) => (
+                                <div
+                                  key={r.participantId}
+                                  style={{
+                                    display: 'flex',
+                                    flexWrap: 'wrap',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    padding: '8px',
+                                    borderRadius: '8px',
+                                    border: '1px solid var(--border)',
+                                    background: 'var(--bg-primary)',
+                                  }}
+                                >
+                                  <span style={{ fontWeight: 'bold', fontSize: '13px', minWidth: '140px' }}>
+                                    {r.name}{' '}
+                                    <span style={{ fontWeight: 'normal', color: 'var(--text-secondary)' }}>
+                                      (ID {r.participantId})
+                                    </span>
+                                  </span>
+                                  <input
+                                    type="datetime-local"
+                                    value={
+                                      joinDateDrafts[r.participantId] ??
+                                      isoInstantToDatetimeLocalValue(r.joinDate)
+                                    }
+                                    onChange={(e) =>
+                                      setJoinDateDrafts((prev) => ({
+                                        ...prev,
+                                        [r.participantId]: e.target.value,
+                                      }))
+                                    }
+                                    style={{
+                                      flex: '1 1 200px',
+                                      minWidth: '180px',
+                                      padding: '6px 10px',
+                                      borderRadius: '6px',
+                                      border: '1px solid var(--border)',
+                                      background: 'var(--bg-secondary)',
+                                      color: 'var(--text)',
+                                    }}
+                                  />
+                                  <button
+                                    type="button"
+                                    className="btn btn-secondary btn-sm"
+                                    disabled={joinDateSavingId === r.participantId}
+                                    onClick={() => saveParticipantJoinDate(r.participantId)}
+                                  >
+                                    {joinDateSavingId === r.participantId ? 'Guardando...' : '💾 Guardar'}
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
+                  </div>
+
+                  <div style={{ background: 'var(--bg-secondary)', padding: '15px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                    <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--heading)', marginBottom: '10px' }}>
+                      📌 Snapshots mensuales por jugador (super admin)
+                    </h3>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '12px' }}>
+                      Si generaste snapshots masivos y un jugador figura con cuota $0 sin querer, podés{' '}
+                      <strong>eliminar</strong> el snapshot de ese mes (vuelven las reglas automáticas) o{' '}
+                      <strong>marcar activo</strong> en ese mes (active=true y estado copiado del jugador).
+                      Usa el mismo Team ID que arriba.
+                    </p>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px', marginBottom: '12px', alignItems: 'end' }}>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label style={{ fontSize: '12px' }}>ID jugador</label>
+                        <input
+                          type="number"
+                          min={1}
+                          value={snapshotParticipantId}
+                          onChange={(e) => setSnapshotParticipantId(e.target.value)}
+                          placeholder="79"
+                        />
+                      </div>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label style={{ fontSize: '12px' }}>Mes (YYYY-MM)</label>
+                        <input
+                          type="text"
+                          value={snapshotMonth}
+                          onChange={(e) => setSnapshotMonth(e.target.value)}
+                          placeholder="2026-05"
+                        />
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        className="btn btn-warning"
+                        disabled={snapshotSaving}
+                        onClick={() => mutateMonthlySnapshot('delete')}
+                      >
+                        {snapshotSaving ? '…' : '🗑️ Quitar snapshot'}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        disabled={snapshotSaving}
+                        onClick={() => mutateMonthlySnapshot('set_active')}
+                      >
+                        {snapshotSaving ? '…' : '✅ Marcar activo en ese mes'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      background: 'var(--bg-secondary)',
+                      padding: '15px',
+                      borderRadius: '8px',
+                      border: '2px solid var(--danger)',
+                    }}
+                  >
+                    <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--danger)', marginBottom: '10px' }}>
+                      ⚠️ Borrar todos los snapshots de uno o más equipos
+                    </h3>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '12px' }}>
+                      Usalo si generaste snapshots de más y querés volver atrás por completo en esos equipos. Solo borra{' '}
+                      <strong>snapshots por jugador</strong>; no elimina pagos ni participantes. Podés marcar abajo para{' '}
+                      <strong>cerrar mes</strong> después del borrado (misma lógica que &quot;Cerrar mes&quot; en el equipo: objetivo y alquiler desde config global + gastos marcados en cuota para ese mes).
+                    </p>
+                    <div className="form-group" style={{ marginBottom: '12px' }}>
+                      <label style={{ fontSize: '12px' }}>IDs de equipo (separados por coma)</label>
+                      <input
+                        type="text"
+                        value={snapshotClearTeamIds}
+                        onChange={(e) => setSnapshotClearTeamIds(e.target.value)}
+                        placeholder="1, 2"
+                        style={{ width: '100%', maxWidth: '360px' }}
+                      />
+                    </div>
+                    <div style={{ marginBottom: '14px', fontSize: '13px', color: 'var(--text)' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', marginBottom: '8px' }}>
+                        <input
+                          type="checkbox"
+                          checked={snapshotClosePreviousMonth}
+                          onChange={(e) => setSnapshotClosePreviousMonth(e.target.checked)}
+                        />
+                        Después del borrado, cerrar <strong>mes anterior</strong> ({addMonths(getCurrentMonth(), -1)})
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={snapshotCloseCurrentMonth}
+                          onChange={(e) => setSnapshotCloseCurrentMonth(e.target.checked)}
+                        />
+                        Después del borrado, cerrar <strong>mes actual</strong> ({getCurrentMonth()})
+                      </label>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-danger"
+                      disabled={snapshotClearSaving}
+                      onClick={clearAllSnapshotsForTeams}
+                    >
+                      {snapshotClearSaving ? 'Borrando…' : '🧨 Borrar snapshots de esos equipos'}
+                    </button>
                   </div>
 
                   {/* Top Users */}

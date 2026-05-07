@@ -21,9 +21,15 @@ export function useParticipants(
   }, [request, currentTeamId]);
 
   const handleAddParticipant = useCallback(
-    async (name: string, phone: string, notes: string, status?: string) => {
+    async (name: string, phone: string, notes: string, status?: string, joinDateIso?: string) => {
       try {
-        const res = await participantsService.createParticipant(request, { name, phone, notes, status });
+        const res = await participantsService.createParticipant(request, {
+          name,
+          phone,
+          notes,
+          status,
+          joinDate: joinDateIso,
+        });
         if (res != null) {
           addToast('Participante agregado', 'success');
           await loadParticipants();
@@ -54,13 +60,21 @@ export function useParticipants(
   );
 
   const handleUpdateParticipant = useCallback(
-    async (id: number, name: string, phone: string, notes: string, status?: string | null) => {
+    async (
+      id: number,
+      name: string,
+      phone: string,
+      notes: string,
+      status?: string | null,
+      joinDateIso?: string
+    ) => {
       try {
         const res = await participantsService.updateParticipant(request, id, {
           name,
           phone,
           notes,
           status: status ?? undefined,
+          ...(joinDateIso != null && joinDateIso !== '' ? { joinDate: joinDateIso } : {}),
         });
         if (res != null) {
           addToast('Participante actualizado', 'success');

@@ -55,12 +55,17 @@ export type UpdateTeamRequest = z.infer<typeof updateTeamSchema>;
 
 const participantStatusSchema = z.enum(['activo', 'sin_laburo', 'lesionado', 'media_cuota']).optional().default('activo');
 
+const joinDateStringSchema = z
+  .string()
+  .refine((val) => !Number.isNaN(Date.parse(val)), { message: 'Fecha de alta inválida' });
+
 export const createParticipantSchema = z.object({
   teamId: z.coerce.number().int().positive('Team ID requerido'),
   name: z.string('Nombre requerido').min(2, 'Nombre muy corto'),
   phone: z.string().optional(),
   notes: z.string().optional(),
   status: participantStatusSchema,
+  joinDate: joinDateStringSchema.optional(),
 });
 
 export type CreateParticipantRequest = z.infer<typeof createParticipantSchema>;
@@ -71,9 +76,37 @@ export const updateParticipantSchema = z.object({
   notes: z.string().nullable().optional(),
   active: z.boolean().optional(),
   status: z.enum(['activo', 'sin_laburo', 'lesionado', 'media_cuota']).nullable().optional(),
+  joinDate: joinDateStringSchema.optional(),
 });
 
 export type UpdateParticipantRequest = z.infer<typeof updateParticipantSchema>;
+
+/** POST /api/admin/participant-monthly-status — solo super_admin */
+export const adminParticipantMonthlyStatusMutationSchema = z.object({
+  action: z.enum(['delete', 'set_active']),
+  teamId: z.coerce.number().int().positive('Team ID requerido'),
+  participantId: z.coerce.number().int().positive('Participante requerido'),
+  month: z.string().regex(/^\d{4}-\d{2}$/, 'Mes debe ser YYYY-MM'),
+});
+
+export type AdminParticipantMonthlyStatusMutationRequest = z.infer<
+  typeof adminParticipantMonthlyStatusMutationSchema
+>;
+
+/** POST /api/admin/participant-monthly-status/clear — solo super_admin */
+export const adminClearTeamSnapshotsSchema = z.object({
+  teamIds: z
+    .array(z.coerce.number().int().positive())
+    .min(1, 'Al menos un equipo')
+    .max(50, 'Máximo 50 equipos por pedido'),
+  /** Tras borrar, ejecuta cierre de mes (MonthlyConfig + snapshots) con datos actuales de BD */
+  closeMonths: z
+    .array(z.string().regex(/^\d{4}-\d{2}$/, 'YYYY-MM'))
+    .max(24)
+    .optional(),
+});
+
+export type AdminClearTeamSnapshotsRequest = z.infer<typeof adminClearTeamSnapshotsSchema>;
 
 // ==================== EXPENSE SCHEMAS ====================
 

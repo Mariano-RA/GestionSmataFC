@@ -77,6 +77,23 @@ describe('computeParticipantsWithDebtStatus', () => {
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe(1);
   });
+
+  it('incluye activos sin trabajo aunque required y paid sean 0', () => {
+    const participants = [
+      participant({ id: 1, active: true, status: 'sin_laburo', name: 'Juan' }),
+    ];
+    const payments: Payment[] = [];
+    const getRequiredAmount = () => 0;
+    const result = computeParticipantsWithDebtStatus(
+      participants,
+      payments,
+      '2024-03',
+      getRequiredAmount
+    );
+    expect(result).toHaveLength(1);
+    expect(result[0].status).toBe('sin_laburo');
+    expect(result[0].debt).toBe(0);
+  });
 });
 
 describe('filterDebtorsByType', () => {

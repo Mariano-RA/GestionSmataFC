@@ -50,9 +50,9 @@ export async function PATCH(
 
     const data = validation.data;
     const { id } = await params;
-    
+
     const currentParticipant = await db.participant.findUnique({
-      where: { id: Number(id) }
+      where: { id: Number(id) },
     });
 
     if (!currentParticipant) {
@@ -68,11 +68,37 @@ export async function PATCH(
     const userId = auth.userId;
     const ip = getClientIp(request) ?? undefined;
 
+    const prismaData: {
+      name?: string;
+      phone?: string | null;
+      notes?: string | null;
+      active?: boolean;
+      status?: string | null;
+      joinDate?: Date;
+    } = {};
+    if (data.name !== undefined) prismaData.name = data.name;
+    if (data.phone !== undefined) prismaData.phone = data.phone;
+    if (data.notes !== undefined) prismaData.notes = data.notes;
+    if (data.active !== undefined) prismaData.active = data.active;
+    if (data.status !== undefined) prismaData.status = data.status;
+    if (data.joinDate !== undefined) prismaData.joinDate = new Date(data.joinDate);
+
     const participant = await db.$transaction(async (tx) => {
       const updated = await tx.participant.update({
         where: { id: Number(id) },
-        data,
+        data: prismaData,
       });
+      const joinDateBefore = currentParticipant.joinDate.toISOString();
+      const joinDateAfter = updated.joinDate.toISOString();
+      const metadata =
+        data.joinDate !== undefined && joinDateBefore !== joinDateAfter
+          ? {
+              before: currentParticipant,
+              after: updated,
+              joinDateBefore,
+              joinDateAfter,
+            }
+          : { before: currentParticipant, after: updated };
       await createAuditLog(
         {
           teamId: updated.teamId,
@@ -81,7 +107,7 @@ export async function PATCH(
           entity: 'Participant',
           entityId: updated.id,
           description: `Participante actualizado: ${updated.name}`,
-          metadata: { before: currentParticipant, after: updated },
+          metadata,
           ipAddress: ip,
         },
         tx
