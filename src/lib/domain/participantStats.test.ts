@@ -25,7 +25,8 @@ describe('computeParticipantPaymentStats', () => {
       participants,
       payments,
       '2024-03',
-      getRequiredAmount
+      getRequiredAmount,
+      (p, month) => getRequiredAmount(p)
     );
     expect(stats).toHaveLength(2);
     const p1 = stats.find(s => s.id === 1)!;
@@ -50,7 +51,8 @@ describe('computeParticipantPaymentStats', () => {
       participants,
       payments,
       '2024-03',
-      getRequiredAmount
+      getRequiredAmount,
+      (p, month) => getRequiredAmount(p)
     );
     expect(stats[0].id).toBe(2);
     expect(stats[1].id).toBe(1);

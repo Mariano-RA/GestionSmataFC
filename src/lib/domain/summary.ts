@@ -23,9 +23,10 @@ export function computeMonthlySummary(
   expenses: Expense[],
   currentMonth: string,
   config: AppConfig,
-  getRequiredAmount: (p: Participant) => number
+  getRequiredAmount: (p: Participant) => number,
+  getRequiredAmountForMonth?: (p: Participant, month: string) => number
 ): MonthlySummary {
-  const monthPayments = payments.filter(p => p.date.startsWith(currentMonth));
+  const monthPayments = payments.filter(p => (p.appliedMonth ?? p.date.slice(0, 7)) === currentMonth);
   const monthExpenses = expenses.filter(e => e.date.startsWith(currentMonth));
 
   const collected = monthPayments.reduce((sum, p) => sum + p.amount, 0);
@@ -40,12 +41,12 @@ export function computeMonthlySummary(
   const progress = monthlyObjective > 0 ? (collected / monthlyObjective) * 100 : 0;
 
   const totalDebt = participants
-    .filter(p => p.active)
     .reduce((sum, p) => {
       const paid = monthPayments
         .filter(pay => pay.participantId === p.id)
         .reduce((s, pay) => s + pay.amount, 0);
-      return sum + Math.max(0, getRequiredAmount(p) - paid);
+      const required = getRequiredAmountForMonth ? getRequiredAmountForMonth(p, currentMonth) : getRequiredAmount(p);
+      return sum + Math.max(0, required - paid);
     }, 0);
 
   return {

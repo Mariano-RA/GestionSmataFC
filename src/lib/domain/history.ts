@@ -42,7 +42,7 @@ export function computeMonthlyHistory(
   let runningDebt = 0;
   return historyMonths.map(month => {
     const paid = historyPayments
-      .filter(p => p.date.startsWith(month))
+      .filter(p => (p.appliedMonth ?? p.date.slice(0, 7)) === month)
       .reduce((sum, p) => sum + p.amount, 0);
     const required = getRequiredForMonth(month);
     const debtMonth = Math.max(0, required - paid);
@@ -100,7 +100,7 @@ export function computeTeamMonthlyHistory(
   const calcByMonth = new Map<string, { collected: number; debtMonth: number; debtAccumulated: number }>();
   monthsActive.forEach((month, idx) => {
     const collected = payments
-      .filter((pay) => pay.date.startsWith(month))
+      .filter((pay) => (pay.appliedMonth ?? pay.date.slice(0, 7)) === month)
       .reduce((sum, pay) => sum + pay.amount, 0);
     let debtMonth = 0;
     let debtAccumulated = 0;

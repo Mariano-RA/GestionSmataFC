@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { formatCurrency, getMonthName, normalizeName } from '@/lib/utils';
+import { formatCurrency, getMonthName, normalizeName, parseYMDToLocalDate } from '@/lib/utils';
 import { buildDebtReminderMessage, openWhatsAppForDebtor as openWhatsApp } from '@/lib/utils/whatsapp';
 import {
   computeParticipantsWithDebtStatus,
@@ -183,7 +183,7 @@ export default function Debtors({
                     <p style={{ fontWeight: '600', marginBottom: '6px', color: 'var(--text)' }}>📜 Historial de pagos:</p>
                     {p.paymentHistory.map(pay => (
                       <div key={pay.id} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                        <span>{new Date(pay.date).toLocaleDateString('es-AR')}</span>
+                        <span>{parseYMDToLocalDate(pay.date).toLocaleDateString('es-AR')}</span>
                         <span style={{ color: 'var(--success)', fontWeight: '600' }}>{formatCurrency(pay.amount)}</span>
                       </div>
                     ))}

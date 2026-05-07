@@ -1,0 +1,89 @@
+---
+description: Document the app stack, dependency versions, and version-specific best practices
+globs:
+  - package.json
+  - prisma/schema.prisma
+  - src/**/*
+alwaysApply: true
+---
+# GestionSmataFC — Tech stack & dependency versions
+
+This rule documents the **major dependencies** in `package.json` and provides **best-practice remarks** for how we should use and maintain them.
+
+## Runtime stack (dependencies)
+
+Source: [package.json](mdc:package.json)
+
+- **Next.js**: `next@latest`
+  - **Best practices**
+    - Prefer **pinning to a specific minor** (or exact) version instead of `"latest"` to avoid surprise breaking changes in CI/prod.
+    - Keep `next`, `react`, `react-dom`, and `eslint-config-next` on **compatible versions** (upgrade as a set).
+    - Use App Router conventions (`src/app/**`) consistently; keep server-only code in route handlers / server modules.
+
+- **React**: `react@latest`, `react-dom@latest`
+  - **Best practices**
+    - Prefer **pinning** instead of `"latest"`.
+    - Keep `@types/react` aligned to the major version in use (currently `@types/react@19.2.14` suggests React 19).
+
+- **Prisma Client**: `@prisma/client@^5.0.0`
+  - **Best practices**
+    - Keep **`prisma` and `@prisma/client` on the same major/minor** to avoid generator/runtime mismatches.
+    - Run `prisma generate` whenever `schema.prisma` changes (already done in `build` script).
+
+- **Auth (JWT)**: `jsonwebtoken@^9.0.3`, `@types/jsonwebtoken@^9.0.10`
+  - **Best practices**
+    - `@types/*` packages are typically **devDependencies** (moving it is optional, but keeps runtime deps lean).
+    - Ensure JWT secrets/TTLs are **validated and centralized** (use your existing env validation patterns).
+
+- **Password hashing**: `bcryptjs@^2.4.3` (+ `@types/bcryptjs@^2.4.6` in dev)
+  - **Best practices**
+    - Use **async** hashing/compare APIs to avoid blocking the event loop.
+    - Consider migrating to **Argon2** for new projects if/when requirements allow; keep bcrypt cost parameters explicit.
+
+- **Validation**: `zod@^4.3.6`
+  - **Best practices**
+    - Prefer a single “source of truth” for schemas in `src/lib/schemas.ts` (as your structure doc suggests).
+    - Be consistent about `safeParse` vs throwing parse; standardize API error shapes.
+
+- **Toasts**: `react-hot-toast@^2.6.0`
+  - **Best practices**
+    - Keep toast usage UI-only; do not leak to server modules or service layers.
+
+## Dev/tooling stack (devDependencies)
+
+- **TypeScript**: `typescript@latest`
+  - **Best practices**
+    - Prefer **pinning** instead of `"latest"` to prevent compiler behavior changes from breaking builds unexpectedly.
+
+- **Node types**: `@types/node@25.3.2`
+  - **Best practices**
+    - Keep this aligned with the **Node runtime** you actually deploy on (document Node version in README or add `engines.node`).
+
+- **ESLint**: `eslint@latest`, `eslint-config-next@latest`
+  - **Best practices**
+    - Prefer pinning (or at least a stable range) and upgrade intentionally.
+    - Keep `eslint` and `eslint-config-next` compatible with your Next.js version.
+
+- **Prisma CLI**: `prisma@^5.0.0`
+  - **Best practices**
+    - Keep aligned with `@prisma/client` (see above).
+
+- **Vitest**: `vitest@^4.0.18`
+  - **Best practices**
+    - Keep unit tests co-located only where intended (your project convention says `src/lib/domain/*.test.ts`).
+
+## Dependency hygiene rules (important for this repo)
+
+- **Avoid `"latest"` for core framework/tooling**
+  - **Pin** `next`, `react`, `react-dom`, `typescript`, `eslint`, `eslint-config-next` to explicit versions (or at minimum a controlled range like `^15.x` / `~15.x` depending on your update policy).
+  - Rationale: `"latest"` makes installs **non-reproducible** and can break CI without any code changes.
+
+- **Keep Prisma versions in lockstep**
+  - `prisma` and `@prisma/client` should be upgraded together.
+
+- **Prefer deterministic installs**
+  - Commit and use the lockfile (npm/pnpm/yarn). In CI, prefer `npm ci` / `pnpm i --frozen-lockfile` / `yarn --immutable`.
+
+- **Upgrade strategy**
+  - When upgrading `next`/`react`/`typescript`, do it in a single PR and run: `lint`, `test`, and a production `build`.
+

@@ -1,0 +1,102 @@
+---
+description: Next.js App Router conventions for routes, server/client boundaries, and data fetching.
+globs: src/app/**/*
+alwaysApply: true
+---
+# Next.js App Router (GestionSmataFC)
+
+Este proyecto usa **Next.js App Router**. Estas reglas existen para evitar que el agente mezcle patrones del Pages Router, cree endpoints fuera de `src/app/api`, o ponga lógica server-only en módulos cliente.
+
+## Alcance
+
+- Aplica a `src/app/**`
+- Referencias relevantes:
+  - [project-structure.mdc](mdc:.cursor/rules/project-structure.mdc)
+  - [src/lib/permissions.ts](mdc:src/lib/permissions.ts)
+  - [src/lib/api-response.ts](mdc:src/lib/api-response.ts)
+
+## Reglas de estructura (obligatorio)
+
+- **Rutas de UI**: siempre en `src/app/<segment>/page.tsx`.
+- **API**: siempre en `src/app/api/<segment>/route.ts`.
+  - **Nunca** crear “API” en `src/pages/api` (no existe en este repo).
+  - **Nunca** crear endpoints fuera de `src/app/api`.
+- **Segmentos dinámicos**: usar carpetas `[...]` (ej. `src/app/api/teams/[id]/route.ts`).
+
+## Server Components vs Client Components
+
+### Regla base
+
+- En App Router, los componentes son **Server Components por defecto**.
+- Solo marcar `use client` cuando sea imprescindible (estado, efectos, event handlers, context providers, librerías DOM-only).
+
+### ✅ Good
+
+```tsx
+// Server Component (sin 'use client')
+export default async function Page() {
+  return <div>...</div>;
+}
+```
+
+### ❌ Bad
+
+```tsx
+'use client';
+// Innecesario: fuerza bundle cliente sin necesidad
+export default function Page() {
+  return <div>...</div>;
+}
+```
+
+## Dónde va la lógica
+
+- **UI pura**: `src/components/**` (presentacional, sin fetch directo).
+- **Orquestación/estado**: `src/containers/**` + `src/hooks/**`.
+- **Lógica de negocio pura**: `src/lib/domain/**` (sin Next/React).
+- **Servicios cliente**: `src/services/**` (wrappers sobre `httpClient`).
+- **Utilidades server/shared**: `src/lib/**`.
+
+> Si el agente necesita “crear algo”, debe ubicarlo donde corresponde. Ver [project-structure.mdc](mdc:.cursor/rules/project-structure.mdc).
+
+## Data fetching (UI)
+
+### En páginas/Server Components
+
+- Preferir **Server Components** para componer layout y secciones.
+- Si se hace fetch server-side, debe ser con APIs server-only y sin reimplementar el cliente HTTP pensado para el browser.
+- No llamar a Prisma directamente desde componentes React salvo que sea un módulo server-only bien justificado (y preferir route handlers cuando sea posible por consistencia y permisos).
+
+### En Client Components
+
+- El fetch debe pasar por `services/*` → `lib/httpClient.ts` (o el hook que ya exista).
+- Evitar `fetch('/api/...')` “ad-hoc” en componentes.
+
+## Archivos especiales de App Router
+
+Cuando corresponda, usar los archivos estándar:
+
+- `loading.tsx`: skeleton/estado de carga por segmento.
+- `error.tsx`: error boundary de segmento (client component).
+- `not-found.tsx`: 404 del segmento.
+- `layout.tsx`: layout y providers (cuidado con `use client`).
+
+### `error.tsx` (regla)
+
+- Debe ser Client Component (requiere `use client`).
+- No filtrar tokens, headers o PII en mensajes.
+- Puede mostrar un mensaje genérico y un botón “reintentar” si aplica.
+
+## Metadata
+
+- Usar `export const metadata = { ... }` o `generateMetadata` si aplica.
+- No inventar `next/head` (Pages Router).
+
+## Checklist para cambios en `src/app/**`
+
+- [ ] No se creó nada en `pages/`.
+- [ ] Los endpoints son `src/app/api/**/route.ts`.
+- [ ] `use client` solo donde es necesario.
+- [ ] No hay imports client → server-only (Prisma, fs, secrets).
+- [ ] UI pura en `components/`, lógica en `containers/hooks/services/lib`.
+

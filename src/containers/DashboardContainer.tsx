@@ -13,6 +13,7 @@ export default function DashboardContainer() {
       expenses={data.expenses}
       config={data.config}
       getRequiredAmount={data.getRequiredAmount}
+      getRequiredAmountForMonth={data.getRequiredAmountForMonth}
     />
   );
 }

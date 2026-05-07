@@ -8,7 +8,7 @@ export async function getPayments(request: RequestFn): Promise<Payment[] | null>
 
 export async function createPayment(
   request: RequestFn,
-  body: { participantId: number; date: string; amount: number; method: string; note: string }
+  body: { participantId: number; date: string; appliedMonth?: string; amount: number; method: string; note: string }
 ): Promise<Payment | null> {
   return request<Payment>('/api/payments', {
     method: 'POST',
@@ -19,7 +19,7 @@ export async function createPayment(
 export async function updatePayment(
   request: RequestFn,
   id: number,
-  body: { participantId: number; date: string; amount: number; method: string; note: string }
+  body: { participantId: number; date: string; appliedMonth?: string | null; amount: number; method: string; note: string }
 ): Promise<Payment | null> {
   return request<Payment>(`/api/payments/${id}`, {
     method: 'PATCH',

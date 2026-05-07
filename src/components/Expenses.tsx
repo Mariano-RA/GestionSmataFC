@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, formatLocalYMD, parseYMDToLocalDate } from '@/lib/utils';
 import type { Expense } from '@/types';
 import { DEFAULT_EXPENSE_CATEGORIES } from '@/types';
 
@@ -26,7 +26,7 @@ export default function Expenses({
 }: ExpensesProps) {
   const [name, setName] = useState('');
   const [amount, setAmount] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(formatLocalYMD(new Date()));
   const categories = expenseCategories?.length ? expenseCategories : DEFAULT_EXPENSE_CATEGORIES;
   const [category, setCategory] = useState(categories[0] ?? 'Otros');
   const [includeInMonthlyShare, setIncludeInMonthlyShare] = useState(false);
@@ -39,7 +39,7 @@ export default function Expenses({
     setEditingId(null);
     setName('');
     setAmount('');
-    setDate(new Date().toISOString().split('T')[0]);
+    setDate(formatLocalYMD(new Date()));
     setCategory(categories[0] ?? 'Otros');
     setIncludeInMonthlyShare(false);
     setShowModal(true);
@@ -83,8 +83,8 @@ export default function Expenses({
   const monthExpenses = expenses
     .filter(e => e.date.startsWith(currentMonth))
     .sort((a, b) => {
-      const dateA = new Date(a.date).getTime();
-      const dateB = new Date(b.date).getTime();
+      const dateA = parseYMDToLocalDate(a.date).getTime();
+      const dateB = parseYMDToLocalDate(b.date).getTime();
       if (dateB !== dateA) return dateB - dateA;
       return (b.id ?? 0) - (a.id ?? 0);
     });
@@ -140,7 +140,7 @@ export default function Expenses({
                   {e.category}
                 </span>
                 <span style={{ fontSize: '12px', color: 'var(--text-secondary)', marginLeft: '8px' }}>
-                  {new Date(e.date).toLocaleDateString('es-AR')}
+                  {parseYMDToLocalDate(e.date).toLocaleDateString('es-AR')}
                 </span>
               </span>
               <span className="expense-amount">{formatCurrency(e.amount)}</span>

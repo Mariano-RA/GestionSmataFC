@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { logger } from '@/lib/logger';
-import { DEFAULT_CONFIG } from '@/lib/utils';
+import { DEFAULT_CONFIG, getFirstSaturdayStartLocal } from '@/lib/utils';
 import type { Participant, ParticipantMonthlyStatus, ParticipantStatus } from '@/types';
 import type { RequestFn } from '@/services/types';
 import { useParticipants } from '@/hooks/useParticipants';
@@ -167,6 +167,16 @@ export function useTeamData(
       const monthSnapshot = participantMonthlyStatuses.find(
         (s) => s.participantId === p.id && s.month === month
       );
+      const joinMonth = p.joinDate?.slice(0, 7);
+      if (!monthSnapshot && joinMonth) {
+        if (month < joinMonth) return 0;
+        if (month === joinMonth) {
+          const joinAt = new Date(p.joinDate);
+          const cutoff = getFirstSaturdayStartLocal(month);
+          if (joinAt.getTime() >= cutoff.getTime()) return 0;
+        }
+      }
+
       const isActiveForMonth = monthSnapshot?.active ?? p.active;
       const statusForMonth = monthSnapshot?.status ?? p.status;
       if (!isActiveForMonth) return 0;
@@ -225,6 +235,7 @@ export function useTeamData(
     participants,
     payments: paymentsHook.payments,
     expenses: expensesHook.expenses,
+    participantMonthlyStatuses,
     config: configHook.config,
     globalConfig: configHook.globalConfig,
     monthlyConfigs: configHook.monthlyConfigs,

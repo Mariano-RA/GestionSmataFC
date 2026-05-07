@@ -79,6 +79,8 @@ export interface Payment {
   teamId: number;
   participantId: number;
   date: string;
+  /** Mes al que se imputa el pago (YYYY-MM). Si no existe, se usa date.slice(0,7). */
+  appliedMonth?: string | null;
   amount: number;
   method?: string;
   note?: string;

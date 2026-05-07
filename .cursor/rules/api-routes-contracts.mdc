@@ -1,0 +1,156 @@
+---
+description: Standard API contract rules for Next.js route handlers (responses, errors, validation, pagination).
+globs: src/app/api/**/*
+alwaysApply: true
+---
+# API Route Handlers — Contratos y consistencia
+
+Estas reglas estandarizan **cómo** deben verse y comportarse los endpoints en `src/app/api/**/route.ts` para que el frontend y las herramientas (logs/auditoría) sean consistentes.
+
+Referencias:
+
+- [project-structure.mdc](mdc:.cursor/rules/project-structure.mdc)
+- [src/lib/api-response.ts](mdc:src/lib/api-response.ts)
+- [src/lib/schemas.ts](mdc:src/lib/schemas.ts)
+- [src/lib/logger.ts](mdc:src/lib/logger.ts)
+- [src/lib/audit.ts](mdc:src/lib/audit.ts)
+- [src/lib/env.ts](mdc:src/lib/env.ts)
+
+## Ubicación y nombres (obligatorio)
+
+- **Solo** se crean endpoints en `src/app/api/<segment>/route.ts`.
+- Los handlers exportados deben ser `GET`, `POST`, `PUT`, `PATCH`, `DELETE` según corresponda.
+- **Nunca** crear handlers en `src/pages/api`.
+
+## Formato de response (obligatorio)
+
+- Usar el helper central de respuestas.
+  - Preferir `src/lib/api-response.ts` para:
+    - success (`ok`, `created`, etc.)
+    - error (`badRequest`, `unauthorized`, `forbidden`, `notFound`, `conflict`, `tooManyRequests`, `serverError`, etc.)
+- La respuesta debe ser **JSON** salvo endpoints explícitos de descarga.
+- No devolver estructuras “inventadas” por endpoint.
+
+### ✅ Good
+
+```ts
+import { ok, badRequest } from '@/lib/api-response';
+
+export async function GET() {
+  return ok({ data: [] });
+}
+```
+
+### ❌ Bad
+
+```ts
+import { NextResponse } from 'next/server';
+
+export async function GET() {
+  return NextResponse.json({ whatever: true, payload: [] });
+}
+```
+
+## Shape estándar sugerido
+
+Sin reescribir el helper existente, el agente debe **adaptarse** a lo que ya exporta `api-response.ts`.
+
+Regla práctica:
+
+- **Success**: siempre un objeto con `data` (y opcionalmente `meta`).
+- **Errors**: siempre un objeto con mensaje humano + detalles de validación si aplica.
+
+> Si el helper ya define otras claves (`success`, `error`, `code`, etc.), seguir el helper. No duplicar lógica.
+
+## Status codes (obligatorio)
+
+Usar el status correcto:
+
+- `200` GET ok / operaciones idempotentes
+- `201` creación
+- `204` delete sin body (solo si el helper lo soporta; sino `200`)
+- `400` input inválido (Zod)
+- `401` no autenticado
+- `403` sin permisos
+- `404` recurso inexistente
+- `409` conflicto (duplicados / constraints)
+- `429` rate limit
+- `500` error inesperado
+
+## Validación con Zod (obligatorio)
+
+- La validación de:
+  - **params** (`[id]`)
+  - **querystring**
+  - **body**
+  debe hacerse con Zod.
+- Esquemas deben vivir en `src/lib/schemas.ts` (single source of truth) salvo casos ultra específicos.
+- Preferir `safeParse` para poder devolver `400` con detalle.
+
+### ✅ Good
+
+```ts
+import { z } from 'zod';
+import { badRequest } from '@/lib/api-response';
+
+const QuerySchema = z.object({ month: z.string().min(1) });
+
+export async function GET(req: Request) {
+  const url = new URL(req.url);
+  const parsed = QuerySchema.safeParse({ month: url.searchParams.get('month') });
+  if (!parsed.success) return badRequest({ message: 'Query inválida', details: parsed.error.flatten() });
+  // ...
+}
+```
+
+### ❌ Bad
+
+```ts
+export async function GET(req: Request) {
+  const url = new URL(req.url);
+  const month = url.searchParams.get('month');
+  // month puede ser null/empty pero se usa igual
+}
+```
+
+## Paginación, filtros y orden (cuando aplica)
+
+Si un endpoint devuelve listas potencialmente grandes:
+
+- Soportar `page` + `pageSize` (o `cursor`) de forma consistente.
+- Validar y clamp:
+  - `page >= 1`
+  - `1 <= pageSize <= 100` (o el máximo que defina el proyecto)
+- Devolver `meta` con: `page`, `pageSize`, `total` (si no es caro) o `hasMore` (si cursor).
+
+Reglas:
+
+- No exponer `orderBy` arbitrario por query sin whitelist.
+- No permitir filtros que rompan el “scope” del team si el recurso es team-scoped.
+
+## Manejo de errores (obligatorio)
+
+- No devolver stack traces al cliente.
+- Loguear errores inesperados con `logger`.
+- Para errores esperables:
+  - `notFound`, `conflict`, `forbidden`, etc. sin log de error (o log a nivel `info/warn` según convención).
+- Nunca loguear:
+  - tokens (access/refresh)
+  - passwords
+  - cookies completas
+  - headers sensibles
+
+## Seguridad de inputs
+
+- No confiar en `id`/`teamId` proveniente del cliente si existe un “team activo” desde auth/claims.
+- Sanitizar/validar strings que se usen en “contains/startsWith” para evitar queries accidentales muy pesadas.
+
+## Checklist por endpoint
+
+- [ ] Valida params/query/body con Zod (preferir `schemas.ts`).
+- [ ] Usa `api-response.ts` para success y error.
+- [ ] Status code correcto.
+- [ ] No filtra secretos ni PII en logs/responses.
+- [ ] En listas: paginación y meta consistente.
+- [ ] Respeta scope (team / admin).
+

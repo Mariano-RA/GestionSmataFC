@@ -129,6 +129,7 @@ model Payment {
   team          Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
   participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
   date          String    // YYYY-MM-DD
+  appliedMonth  String?   // YYYY-MM (mes al que se imputa el pago; si null se usa date.slice(0,7))
   amount        Int
   method        String?
   note          String?

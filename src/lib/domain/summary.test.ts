@@ -41,7 +41,8 @@ describe('computeMonthlySummary', () => {
       expenses,
       '2024-03',
       defaultConfig,
-      getRequiredAmount
+      getRequiredAmount,
+      (p, month) => getRequiredAmount(p)
     );
     expect(summary.collected).toBe(1000);
     expect(summary.monthlyObjective).toBe(1500);
@@ -64,7 +65,8 @@ describe('computeMonthlySummary', () => {
       expenses,
       '2024-03',
       defaultConfig,
-      getRequiredAmount
+      getRequiredAmount,
+      (p, month) => getRequiredAmount(p)
     );
     expect(summary.recordedExpenses).toBe(200);
     expect(summary.totalCosts).toBe(200 + defaultConfig.monthlyTarget + defaultConfig.fieldRental);
@@ -84,7 +86,8 @@ describe('computeMonthlySummary', () => {
       expenses,
       '2024-03',
       defaultConfig,
-      getRequiredAmount
+      getRequiredAmount,
+      (p, month) => getRequiredAmount(p)
     );
     expect(summary.includedExpensesForShare).toBe(200);
     expect(summary.baseObjective).toBe(1500);

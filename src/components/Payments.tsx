@@ -1,17 +1,18 @@
 'use client';
 
-import { useState } from 'react';
-import { formatCurrency, normalizeName } from '@/lib/utils';
+import { useMemo, useState } from 'react';
+import { formatCurrency, normalizeName, formatLocalYMD, parseYMDToLocalDate, addMonths, getLastDayOfMonthYMD } from '@/lib/utils';
 import type { Payment, Participant } from '@/types';
 
 interface PaymentsProps {
   payments: Payment[];
   participants: Participant[];
   currentMonth: string;
-  onAdd: (participantId: number, date: string, amount: number, method: string, note: string) => void;
-  onUpdate: (id: number, participantId: number, date: string, amount: number, method: string, note: string) => void;
+  onAdd: (participantId: number, date: string, amount: number, method: string, note: string, appliedMonth?: string) => void;
+  onUpdate: (id: number, participantId: number, date: string, amount: number, method: string, note: string, appliedMonth?: string | null) => void;
   onDelete: (id: number) => void;
   addToast: (message: string, type: 'success' | 'error' | 'info') => void;
+  getRequiredAmountForMonth: (p: Participant, month: string) => number;
 }
 
 export default function Payments({
@@ -21,13 +22,17 @@ export default function Payments({
   onAdd,
   onUpdate,
   onDelete,
-  addToast
+  addToast,
+  getRequiredAmountForMonth,
 }: PaymentsProps) {
+  const getPayMonth = (p: Payment) => p.appliedMonth ?? p.date.slice(0, 7);
+
   const [participantId, setParticipantId] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [amount, setAmount] = useState('');
+  const [date, setDate] = useState(formatLocalYMD(new Date()));
+  const [amount, setAmount] = useState(''); // monto a imputar al mes actual (mes de la fecha)
   const [method, setMethod] = useState('');
   const [note, setNote] = useState('');
+  const [applyToPrevAmount, setApplyToPrevAmount] = useState('');
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -35,10 +40,11 @@ export default function Payments({
   const openAdd = () => {
     setEditingId(null);
     setParticipantId('');
-    setDate(new Date().toISOString().split('T')[0]);
+    setDate(formatLocalYMD(new Date()));
     setAmount('');
     setMethod('');
     setNote('');
+    setApplyToPrevAmount('');
     setShowModal(true);
   };
 
@@ -49,6 +55,7 @@ export default function Payments({
     setAmount(String(p.amount));
     setMethod(p.method || '');
     setNote(p.note || '');
+    setApplyToPrevAmount('');
     setShowModal(true);
   };
 
@@ -57,13 +64,46 @@ export default function Payments({
     setEditingId(null);
   };
 
+  const payMonth = date.slice(0, 7);
+  const prevMonth = addMonths(payMonth, -1);
+  const selectedParticipant = useMemo(
+    () => participants.find((p) => p.id === Number(participantId)) ?? null,
+    [participants, participantId]
+  );
+  const prevDebt = useMemo(() => {
+    if (!selectedParticipant) return 0;
+    const requiredPrev = getRequiredAmountForMonth(selectedParticipant, prevMonth);
+    const paidPrev = payments
+      .filter((p) => p.participantId === selectedParticipant.id && getPayMonth(p) === prevMonth)
+      .reduce((sum, p) => sum + p.amount, 0);
+    return Math.max(0, requiredPrev - paidPrev);
+  }, [selectedParticipant, prevMonth, payments, getRequiredAmountForMonth]);
+
   const handleAdd = async () => {
-    if (!participantId || !date || !amount) {
+    if (!participantId || !date) {
       addToast('Por favor completa todos los campos requeridos', 'error');
       return;
     }
     try {
-      await onAdd(Number(participantId), date, Number(amount), method, note);
+      const pid = Number(participantId);
+      const amtCurr = Number(amount) || 0;
+      const amtPrevRequested = Number(applyToPrevAmount) || 0;
+      const amtPrev = Math.max(0, Math.min(prevDebt, amtPrevRequested));
+
+      if (amtCurr <= 0 && amtPrev <= 0) {
+        addToast('Ingresá un monto para el mes actual y/o el mes anterior', 'error');
+        return;
+      }
+
+      if (amtPrev > 0) {
+        // Para imputar al mes anterior, la fecha debe ser el último día de ese mes
+        const prevMonthDate = getLastDayOfMonthYMD(prevMonth);
+        await onAdd(pid, prevMonthDate, amtPrev, method, note, prevMonth);
+      }
+      if (amtCurr > 0) {
+        await onAdd(pid, date, amtCurr, method, note, payMonth);
+      }
+
       closeModal();
     } catch (error) {
       console.error('Error in handleAdd:', error);
@@ -78,10 +118,10 @@ export default function Payments({
   };
 
   const allMonthPayments = payments
-    .filter(p => p.date.startsWith(currentMonth))
+    .filter(p => getPayMonth(p) === currentMonth)
     .sort((a, b) => {
-      const dateA = new Date(a.date).getTime();
-      const dateB = new Date(b.date).getTime();
+      const dateA = parseYMDToLocalDate(a.date).getTime();
+      const dateB = parseYMDToLocalDate(b.date).getTime();
       if (dateB !== dateA) return dateB - dateA;
       return (b.id ?? 0) - (a.id ?? 0);
     });
@@ -135,7 +175,7 @@ export default function Payments({
                     </span>
                   </span>
                   <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                    {new Date(p.date).toLocaleDateString('es-AR')}
+                    {parseYMDToLocalDate(p.date).toLocaleDateString('es-AR')}
                   </span>
                 </div>
                 {p.note && <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px' }}>{p.note}</p>}
@@ -173,6 +213,49 @@ export default function Payments({
               ))}
             </select>
           </div>
+          {editingId === null && participantId && (
+            <div
+              style={{
+                marginBottom: '12px',
+                padding: '10px 12px',
+                borderRadius: '8px',
+                border: '1px solid var(--border)',
+                background: 'var(--bg-secondary)',
+                fontSize: '12px',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+                <div style={{ color: 'var(--text-secondary)' }}>
+                  Deuda mes anterior ({prevMonth})
+                </div>
+                <div style={{ fontWeight: 'bold', color: prevDebt > 0 ? 'var(--danger)' : 'var(--success)' }}>
+                  {formatCurrency(prevDebt)}
+                </div>
+              </div>
+              {prevDebt > 0 ? (
+                <div style={{ marginTop: '10px' }}>
+                  <label style={{ display: 'block', marginBottom: '6px', color: 'var(--text-secondary)' }}>
+                    Monto a imputar al mes anterior
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1000"
+                    value={applyToPrevAmount}
+                    onChange={(e) => setApplyToPrevAmount(e.target.value)}
+                    placeholder={`0 (máx ${formatCurrency(prevDebt)})`}
+                  />
+                  <div style={{ marginTop: '6px', color: 'var(--text-secondary)' }}>
+                    Si imputás, se guardará con fecha <strong>{getLastDayOfMonthYMD(prevMonth)}</strong>.
+                  </div>
+                </div>
+              ) : (
+                <div style={{ marginTop: '6px', color: 'var(--text-secondary)' }}>
+                  No hay deuda pendiente del mes anterior.
+                </div>
+              )}
+            </div>
+          )}
           <div className="input-group">
             <div className="form-group">
               <label>Fecha</label>
@@ -188,7 +271,7 @@ export default function Payments({
                 type="number"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                placeholder="0"
+                placeholder="0 (mes actual)"
                 min="0"
                 step="1000"
               />

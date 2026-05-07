@@ -15,7 +15,7 @@ export default function MonthlyProgressBar({
   monthlyObjective,
   monthlyDebtTotal,
 }: MonthlyProgressBarProps) {
-  const monthPayments = payments.filter(p => p.date.startsWith(currentMonth));
+  const monthPayments = payments.filter(p => (p.appliedMonth ?? p.date.slice(0, 7)) === currentMonth);
   const collected = monthPayments.reduce((sum, p) => sum + p.amount, 0);
   const progress = monthlyObjective > 0 ? (collected / monthlyObjective) * 100 : 0;
 

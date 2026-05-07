@@ -69,6 +69,24 @@ interface AdminStatsData {
   actionsByEntity?: ActionByEntity[];
 }
 
+interface DebtAuditRow {
+  participantId: number;
+  name: string;
+  joinDate: string;
+  joinMonth: string;
+  zeroMonths: string[];
+  missingSnapshots: string[];
+  inconsistentSnapshots: Array<{ month: string; active: boolean; status: string | null }>;
+}
+
+interface DebtAuditResponse {
+  teamId: number;
+  fromMonth: string;
+  toMonth: string;
+  affectedCount: number;
+  rows: DebtAuditRow[];
+}
+
 /** useApi devuelve ya el .data del API (objeto de stats), no el envoltorio */
 
 export default function AdminDashboard() {
@@ -79,6 +97,13 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<AdminStatsData | null>(null);
   const [loadingStats, setLoadingStats] = useState(false);
   const [downloadingBackup, setDownloadingBackup] = useState(false);
+
+  const [auditTeamId, setAuditTeamId] = useState<number>(1);
+  const [auditFromMonth, setAuditFromMonth] = useState<string>('');
+  const [auditToMonth, setAuditToMonth] = useState<string>('');
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditApplyingFix, setAuditApplyingFix] = useState(false);
+  const [auditResult, setAuditResult] = useState<DebtAuditResponse | null>(null);
 
   const downloadFullBackup = async () => {
     try {
@@ -154,6 +179,57 @@ export default function AdminDashboard() {
       logger.error('Error loading admin stats', error);
     } finally {
       setLoadingStats(false);
+    }
+  };
+
+  const runDebtAudit = async () => {
+    try {
+      setAuditLoading(true);
+      setAuditResult(null);
+
+      const params = new URLSearchParams({ teamId: String(auditTeamId) });
+      if (auditFromMonth.trim()) params.set('fromMonth', auditFromMonth.trim());
+      if (auditToMonth.trim()) params.set('toMonth', auditToMonth.trim());
+
+      const data = await request<DebtAuditResponse>(`/api/debt-audit?${params.toString()}`, {
+        disableAutoParams: true,
+      });
+      if (!data) throw new Error('No se pudo ejecutar la auditoría');
+      setAuditResult(data);
+      toast.success('Auditoría ejecutada');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Error ejecutando auditoría');
+      logger.error('Error running debt audit', error);
+    } finally {
+      setAuditLoading(false);
+    }
+  };
+
+  const applyDebtAuditFix = async () => {
+    if (!auditResult) return;
+    const ok = confirm(
+      'Esto va a crear snapshots faltantes (ParticipantMonthlyStatus) marcando active=false\n' +
+      'para meses que no corresponden por fecha de alta.\n\n¿Continuar?'
+    );
+    if (!ok) return;
+    try {
+      setAuditApplyingFix(true);
+      const body: Record<string, unknown> = { teamId: auditTeamId };
+      if (auditFromMonth.trim()) body.fromMonth = auditFromMonth.trim();
+      if (auditToMonth.trim()) body.toMonth = auditToMonth.trim();
+
+      const res = await request<{ created: number; updated?: number }>('/api/debt-audit', {
+        method: 'POST',
+        body: { ...body, fixInconsistent: true },
+        disableAutoParams: true,
+      });
+      toast.success(`Fix aplicado. Snapshots creados: ${res?.created ?? 0}, actualizados: ${res?.updated ?? 0}`);
+      await runDebtAudit();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Error aplicando fix');
+      logger.error('Error applying debt audit fix', error);
+    } finally {
+      setAuditApplyingFix(false);
     }
   };
 
@@ -244,6 +320,97 @@ export default function AdminDashboard() {
                     >
                       {downloadingBackup ? 'Descargando...' : '📥 Descargar backup completo'}
                     </button>
+                  </div>
+
+                  <div style={{ background: 'var(--bg-secondary)', padding: '15px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                    <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--heading)', marginBottom: '10px' }}>
+                      🧾 Auditoría de deuda por alta (joinDate)
+                    </h3>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '12px' }}>
+                      Detecta jugadores/meses donde debería ser cuota 0 por fecha de alta (corte: primer sábado 00:00) y faltan snapshots para congelarlo.
+                    </p>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px', marginBottom: '12px' }}>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label style={{ fontSize: '12px' }}>Team ID</label>
+                        <input
+                          type="number"
+                          value={auditTeamId}
+                          min={1}
+                          onChange={(e) => setAuditTeamId(Math.max(1, Number(e.target.value) || 1))}
+                        />
+                      </div>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label style={{ fontSize: '12px' }}>Desde (YYYY-MM)</label>
+                        <input
+                          type="text"
+                          value={auditFromMonth}
+                          placeholder="2024-01"
+                          onChange={(e) => setAuditFromMonth(e.target.value)}
+                        />
+                      </div>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label style={{ fontSize: '12px' }}>Hasta (YYYY-MM)</label>
+                        <input
+                          type="text"
+                          value={auditToMonth}
+                          placeholder="2024-12"
+                          onChange={(e) => setAuditToMonth(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                      <button
+                        className="btn btn-secondary"
+                        onClick={runDebtAudit}
+                        disabled={auditLoading}
+                      >
+                        {auditLoading ? 'Auditando...' : '🔍 Auditar'}
+                      </button>
+                      <button
+                        className="btn btn-warning"
+                        onClick={applyDebtAuditFix}
+                        disabled={auditApplyingFix || !auditResult || auditResult.affectedCount === 0}
+                        title="Crea snapshots faltantes active=false (no pisa existentes)"
+                      >
+                        {auditApplyingFix ? 'Aplicando...' : '🧩 Aplicar fix (crear snapshots)'}
+                      </button>
+                    </div>
+
+                    {auditResult && (
+                      <div style={{ marginTop: '12px', background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: '8px', padding: '12px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', marginBottom: '10px' }}>
+                          <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                            Team {auditResult.teamId} • Rango {auditResult.fromMonth} → {auditResult.toMonth}
+                          </div>
+                          <div style={{ fontSize: '12px', fontWeight: 'bold', color: auditResult.affectedCount > 0 ? 'var(--danger)' : 'var(--success)' }}>
+                            Afectados: {auditResult.affectedCount}
+                          </div>
+                        </div>
+                        {auditResult.affectedCount === 0 ? (
+                          <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '13px' }}>No se detectaron inconsistencias.</p>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            {auditResult.rows.slice(0, 20).map((r) => (
+                              <div key={r.participantId} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-secondary)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+                                  <div style={{ fontWeight: 'bold', color: 'var(--text)' }}>{r.name} (ID {r.participantId})</div>
+                                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Alta: {r.joinDate.slice(0, 10)} (mes {r.joinMonth})</div>
+                                </div>
+                                <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                  <div>Snapshots faltantes (cuota 0): <strong>{r.missingSnapshots.length}</strong>{r.missingSnapshots.length ? ` → ${r.missingSnapshots.join(', ')}` : ''}</div>
+                                  <div>Snapshots inconsistentes: <strong>{r.inconsistentSnapshots.length}</strong>{r.inconsistentSnapshots.length ? ` → ${r.inconsistentSnapshots.map((x) => x.month).join(', ')}` : ''}</div>
+                                </div>
+                              </div>
+                            ))}
+                            {auditResult.rows.length > 20 && (
+                              <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                Mostrando 20 de {auditResult.rows.length}. (Podemos agregar paginado/export si lo necesitás.)
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Top Users */}

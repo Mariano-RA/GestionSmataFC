@@ -21,11 +21,19 @@ export function usePayments(
   }, [request, currentTeamId]);
 
   const handleAddPayment = useCallback(
-    async (participantId: number, date: string, amount: number, method: string, note: string) => {
+    async (
+      participantId: number,
+      date: string,
+      amount: number,
+      method: string,
+      note: string,
+      appliedMonth?: string
+    ) => {
       try {
         const res = await paymentsService.createPayment(request, {
           participantId,
           date,
+          appliedMonth,
           amount,
           method,
           note,
@@ -60,11 +68,20 @@ export function usePayments(
   );
 
   const handleUpdatePayment = useCallback(
-    async (id: number, participantId: number, date: string, amount: number, method: string, note: string) => {
+    async (
+      id: number,
+      participantId: number,
+      date: string,
+      amount: number,
+      method: string,
+      note: string,
+      appliedMonth?: string | null
+    ) => {
       try {
         const res = await paymentsService.updatePayment(request, id, {
           participantId,
           date,
+          appliedMonth,
           amount,
           method,
           note,

@@ -13,6 +13,7 @@ interface DashboardProps {
   expenses: Expense[];
   config: AppConfig;
   getRequiredAmount: (p: Participant) => number;
+  getRequiredAmountForMonth?: (p: Participant, month: string) => number;
 }
 
 export default function Dashboard({
@@ -21,7 +22,8 @@ export default function Dashboard({
   payments,
   expenses,
   config,
-  getRequiredAmount
+  getRequiredAmount,
+  getRequiredAmountForMonth,
 }: DashboardProps) {
   const summary = computeMonthlySummary(
     participants,
@@ -29,7 +31,8 @@ export default function Dashboard({
     expenses,
     currentMonth,
     config,
-    getRequiredAmount
+    getRequiredAmount,
+    getRequiredAmountForMonth
   );
 
   const activeParticipants = participants.filter(p => p.active).length || 1;
@@ -132,6 +135,7 @@ export default function Dashboard({
         payments={payments}
         currentMonth={currentMonth}
         getRequiredAmount={getRequiredAmount}
+        getRequiredAmountForMonth={getRequiredAmountForMonth}
       />
       <ExpenseTrend expenses={summary.monthExpenses} />
 

@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
       return ApiResponse.fromZodError(validation.error);
     }
 
-    const { teamId, participantId, date, amount, method, note } = validation.data;
+    const { teamId, participantId, date, appliedMonth, amount, method, note } = validation.data;
 
     // Validar autenticación, acceso al equipo y permiso de escritura
     const auth = await validateProtectedTeamRouteWithMethod(request, db, teamId, 'POST');
@@ -80,6 +80,7 @@ export async function POST(request: NextRequest) {
           teamId,
           participantId,
           date,
+          appliedMonth: appliedMonth ?? null,
           amount: Number(amount),
           method: method || null,
           note: note || null,
@@ -93,7 +94,7 @@ export async function POST(request: NextRequest) {
           entity: 'Payment',
           entityId: created.id,
           description: `Pago creado: $${amount} para participante ${participantId}`,
-          metadata: { participantId, date, amount, method, note },
+          metadata: { participantId, date, appliedMonth: appliedMonth ?? null, amount, method, note },
           ipAddress: ip,
         },
         tx

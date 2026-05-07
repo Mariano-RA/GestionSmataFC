@@ -14,6 +14,7 @@ export default function PaymentsContainer() {
       onUpdate={data.handleUpdatePayment}
       onDelete={data.handleDeletePayment}
       addToast={data.addToast}
+      getRequiredAmountForMonth={data.getRequiredAmountForMonth}
     />
   );
 }

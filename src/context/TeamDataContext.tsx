@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useMemo, type ReactNode } from 'react';
 import type { RequestFn } from '@/services/types';
 import { useTeamData } from '@/hooks/useTeamData';
-import type { Participant, Payment, Expense, AppConfig, MonthlyConfig } from '@/types';
+import type { Participant, Payment, Expense, AppConfig, MonthlyConfig, ParticipantMonthlyStatus } from '@/types';
 
 type AddToast = (message: string, type?: 'success' | 'error' | 'info') => void;
 
@@ -11,6 +11,7 @@ export interface TeamDataContextValue {
   participants: Participant[];
   payments: Payment[];
   expenses: Expense[];
+  participantMonthlyStatuses: ParticipantMonthlyStatus[];
   config: AppConfig;
   globalConfig: AppConfig;
   monthlyConfigs: MonthlyConfig[];
@@ -31,9 +32,9 @@ export interface TeamDataContextValue {
   handleRemoveParticipant: (id: number) => Promise<void>;
   handleUpdateParticipant: (id: number, name: string, phone: string, notes: string, status?: string | null) => Promise<void>;
   handleToggleParticipant: (id: number) => Promise<void>;
-  handleAddPayment: (participantId: number, date: string, amount: number, method: string, note: string) => Promise<void>;
+  handleAddPayment: (participantId: number, date: string, amount: number, method: string, note: string, appliedMonth?: string) => Promise<void>;
   handleDeletePayment: (id: number) => Promise<void>;
-  handleUpdatePayment: (id: number, participantId: number, date: string, amount: number, method: string, note: string) => Promise<void>;
+  handleUpdatePayment: (id: number, participantId: number, date: string, amount: number, method: string, note: string, appliedMonth?: string | null) => Promise<void>;
   handleAddExpense: (name: string, amount: number, date: string, category: string, includeInMonthlyShare?: boolean) => Promise<void>;
   handleUpdateExpense: (id: number, name: string, amount: number, date: string, category: string, includeInMonthlyShare?: boolean) => Promise<void>;
   handleDeleteExpense: (id: number) => Promise<void>;

@@ -1,0 +1,88 @@
+---
+description: Authentication and authorization rules for API routes (JWT, refresh, team scoping, admin permissions).
+globs: src/app/api/**/*
+alwaysApply: true
+---
+# Auth y permisos (JWT + Team scope)
+
+Este repo usa JWT (access/refresh) y permisos por equipo via `UserTeam`. Estas reglas evitan endpoints inseguros y checks inconsistentes.
+
+Referencias:
+
+- [src/lib/auth.ts](mdc:src/lib/auth.ts)
+- [src/lib/jwt.ts](mdc:src/lib/jwt.ts)
+- [src/lib/permissions.ts](mdc:src/lib/permissions.ts)
+- [project-structure.mdc](mdc:.cursor/rules/project-structure.mdc)
+
+## Principios (obligatorio)
+
+- **Nunca** confiar en `userId`, `role`, `teamId` enviados por el cliente.
+- El **scope** (usuario, equipos, rol) se deriva del token / sesión y/o DB.
+- Los endpoints bajo `src/app/api/admin/**` son **admin-only** y deben usar helpers de permisos.
+- Los endpoints team-scoped deben:
+  - verificar acceso del usuario al equipo
+  - operar solo dentro de ese equipo
+
+## Uso obligatorio de `permissions.ts`
+
+### Admin endpoints
+
+- Cualquier `src/app/api/admin/**` debe llamar a una verificación de rol/permisos desde `src/lib/permissions.ts`.
+- Si no existe helper para un caso, crear uno en `permissions.ts` (no duplicar lógica en cada endpoint).
+
+### Team endpoints
+
+- Para endpoints sobre `participants`, `payments`, `expenses`, etc.:
+  - verificar que el usuario pertenece al team (`UserTeam`) y tiene el rol adecuado.
+  - forzar el `teamId` en queries Prisma (no usar el del body).
+
+## Refresh tokens / access tokens
+
+- No loguear tokens.
+- No exponer tokens en JSON si la app usa cookies httpOnly (seguir el patrón existente en `auth`).
+- En logout/refresh: invalidación debe seguir el flujo actual (no inventar almacenamiento si ya existe).
+
+## Patrones prohibidos
+
+### ❌ Prohibido: checks “manuales” inconsistentes
+
+```ts
+// Evitar: checks ad-hoc que no usan permissions.ts
+if (user.role !== 'ADMIN') return new Response('no', { status: 403 });
+```
+
+### ❌ Prohibido: confiar `teamId` del body/query
+
+```ts
+// Evitar: el cliente decide el team
+const { teamId } = await req.json();
+await prisma.payment.create({ data: { teamId, ... } });
+```
+
+## Buenas prácticas requeridas
+
+- Centralizar:
+  - parse/validación del usuario actual (claims)
+  - resolución del team activo/preferido si existe esa noción
+  - checks de rol/pertenencia
+- Mantener mensajes de error:
+  - `401` si no autenticado
+  - `403` si autenticado pero sin permisos
+
+## Logging / auditoría con auth
+
+- En acciones sensibles (admin, cambios masivos, import/backup):
+  - registrar auditoría con `src/lib/audit.ts` si el proyecto ya lo usa en esos casos.
+- Nunca incluir:
+  - cookies completas
+  - headers `Authorization`
+  - tokens
+
+## Checklist (por endpoint)
+
+- [ ] Determina usuario actual solo desde auth (no input).
+- [ ] Usa `permissions.ts` para admin/team checks.
+- [ ] Asegura `teamId` en queries Prisma por scope, no por body/query.
+- [ ] Status `401/403` correctos.
+- [ ] No loguea ni devuelve tokens.
+

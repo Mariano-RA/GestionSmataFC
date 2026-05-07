@@ -72,7 +72,7 @@ export async function PATCH(
       return ApiResponse.fromZodError(validation.error);
     }
 
-    const { participantId, date, amount, method, note } = validation.data;
+    const { participantId, date, appliedMonth, amount, method, note } = validation.data;
 
     const currentPayment = await db.payment.findUnique({
       where: { id: Number(id) }
@@ -97,6 +97,7 @@ export async function PATCH(
         data: {
           participantId,
           date,
+          appliedMonth: appliedMonth === undefined ? undefined : appliedMonth,
           amount: Number(amount),
           method: method || null,
           note: note || null,

@@ -9,19 +9,22 @@ interface PaymentStatsProps {
   payments: Payment[];
   currentMonth: string;
   getRequiredAmount: (p: Participant) => number;
+  getRequiredAmountForMonth?: (p: Participant, month: string) => number;
 }
 
 export default function PaymentStats({
   participants,
   payments,
   currentMonth,
-  getRequiredAmount
+  getRequiredAmount,
+  getRequiredAmountForMonth,
 }: PaymentStatsProps) {
   const stats = computeParticipantPaymentStats(
     participants,
     payments,
     currentMonth,
-    getRequiredAmount
+    getRequiredAmount,
+    getRequiredAmountForMonth
   );
 
   return (

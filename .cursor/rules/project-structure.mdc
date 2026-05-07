@@ -1,0 +1,205 @@
+---
+description: Project directory structure and important files for GestionSmataFC
+globs:
+alwaysApply: true
+---
+# GestionSmataFC — Project Structure
+
+A Next.js (App Router) + TypeScript application using Prisma with PostgreSQL for managing football team members, payments, expenses, and admin operations. Authentication uses JWT with refresh tokens; permissions are scoped per-team via `UserTeam`.
+
+## Top-Level Layout
+
+```
+GestionSmataFC/
+├── .cursor/rules/         # Cursor AI rules (this folder)
+├── prisma/                # Database schema & migrations
+├── public/                # Static assets (manifest.json)
+├── scripts/               # DB maintenance / ops scripts
+├── src/                   # Application source code
+├── .env                   # Local env vars (gitignored)
+├── Dockerfile             # Production container build
+├── next.config.js         # Next config; aliases `@` → `src/`
+├── next-env.d.ts          # Next type declarations
+├── package.json           # Scripts & deps
+├── tsconfig.json          # TS config; `@/*` → `src/*`
+└── vitest.config.ts       # Vitest test runner config
+```
+
+## `src/` — Application Source
+
+```
+src/
+├── app/            # Next.js App Router (routes + API)
+├── components/     # Presentational React components (UI)
+├── containers/     # Stateful wrappers wiring data → components
+├── context/        # React Context providers
+├── hooks/          # Reusable React hooks
+├── lib/            # Server/shared utilities & business logic
+├── services/       # Client-side API service layer
+└── types/          # Shared TypeScript types
+```
+
+### `src/app/` — Routes & API (Next.js App Router)
+
+```
+app/
+├── admin/page.tsx          # Admin dashboard route
+├── login/page.tsx          # Login page
+├── globals.css             # Global styles
+├── layout.tsx              # Root layout (providers, fonts, etc.)
+├── page.tsx                # Home/dashboard route
+└── api/                    # Route handlers (route.ts)
+    ├── route.ts            # API index/health
+    ├── admin/              # Admin-only endpoints
+    │   ├── backup/route.ts
+    │   ├── logs/route.ts
+    │   ├── stats/route.ts
+    │   ├── teams/{route.ts, [id]/route.ts}
+    │   ├── user-teams/{route.ts, [id]/route.ts}
+    │   └── users/{route.ts, [id]/route.ts}
+    ├── auth/               # Login, logout, me, refresh, etc.
+    │   ├── login/route.ts
+    │   ├── logout/route.ts
+    │   ├── me/route.ts
+    │   ├── preferred-team/route.ts
+    │   ├── refresh/route.ts
+    │   └── validate-access/route.ts
+    ├── backup/{route.ts, import/route.ts}
+    ├── config/route.ts
+    ├── expenses/{route.ts, [id]/route.ts}
+    ├── logs/{route.ts, [id]/route.ts}
+    ├── participant-monthly-status/route.ts
+    ├── participants/{route.ts, [id]/route.ts}
+    ├── payments/{route.ts, [id]/route.ts}
+    ├── teams/{route.ts, [id]/route.ts}
+    └── users/{route.ts, [id]/route.ts}
+```
+
+**Conventions:**
+- All API endpoints live under `src/app/api/` as `route.ts` files (App Router).
+- Dynamic params use the `[id]` folder convention.
+- Admin-only endpoints are nested under `api/admin/` and should call permission helpers in [permissions.ts](mdc:src/lib/permissions.ts).
+
+### `src/components/` — Presentational Components
+
+Flat directory of `.tsx` UI components. Notable:
+- [Dashboard.tsx](mdc:src/components/Dashboard.tsx), [Header.tsx](mdc:src/components/Header.tsx), [Nav.tsx](mdc:src/components/Nav.tsx), [Tabs.tsx](mdc:src/components/Tabs.tsx)
+- Domain UI: [Payments.tsx](mdc:src/components/Payments.tsx), [Expenses.tsx](mdc:src/components/Expenses.tsx), [Participants.tsx](mdc:src/components/Participants.tsx), [Debtors.tsx](mdc:src/components/Debtors.tsx), [Comparison.tsx](mdc:src/components/Comparison.tsx)
+- Admin UI: [AdminDashboard.tsx](mdc:src/components/AdminDashboard.tsx), [AdminUsers.tsx](mdc:src/components/AdminUsers.tsx), [AdminTeams.tsx](mdc:src/components/AdminTeams.tsx), [AdminUserTeams.tsx](mdc:src/components/AdminUserTeams.tsx), [AdminLogs.tsx](mdc:src/components/AdminLogs.tsx), [AdminStats.tsx](mdc:src/components/AdminStats.tsx)
+- Utilities: [DarkModeToggle.tsx](mdc:src/components/DarkModeToggle.tsx), [Toast.tsx](mdc:src/components/Toast.tsx), [TeamSelector.tsx](mdc:src/components/TeamSelector.tsx), [MonthSelector.tsx](mdc:src/components/MonthSelector.tsx), [HistoryModal.tsx](mdc:src/components/HistoryModal.tsx)
+- Barrel export: [index.tsx](mdc:src/components/index.tsx)
+
+**Convention:** Components are pure/presentational where possible. Business logic and data fetching live in `containers/` or hooks.
+
+### `src/containers/` — Stateful Wrappers
+
+Smart components that orchestrate hooks + services and render the matching `components/` UI.
+
+- [DashboardContainer.tsx](mdc:src/containers/DashboardContainer.tsx)
+- [PaymentsContainer.tsx](mdc:src/containers/PaymentsContainer.tsx), [ExpensesContainer.tsx](mdc:src/containers/ExpensesContainer.tsx), [ParticipantsContainer.tsx](mdc:src/containers/ParticipantsContainer.tsx)
+- [DebtorsContainer.tsx](mdc:src/containers/DebtorsContainer.tsx), [ComparisonContainer.tsx](mdc:src/containers/ComparisonContainer.tsx)
+- [SettingsContainer.tsx](mdc:src/containers/SettingsContainer.tsx), [HistoryModalContainer.tsx](mdc:src/containers/HistoryModalContainer.tsx), [MonthlyProgressBarContainer.tsx](mdc:src/containers/MonthlyProgressBarContainer.tsx)
+- Barrel: [index.ts](mdc:src/containers/index.ts)
+
+**Convention:** Pages/routes import containers (not raw components) for any stateful section.
+
+### `src/context/` — React Contexts
+
+- [UserContext.tsx](mdc:src/context/UserContext.tsx) — current authenticated user
+- [TeamDataContext.tsx](mdc:src/context/TeamDataContext.tsx) — active team + cached data
+
+### `src/hooks/` — Reusable React Hooks
+
+- Data hooks: [useExpenses.ts](mdc:src/hooks/useExpenses.ts), [usePayments.ts](mdc:src/hooks/usePayments.ts), [useParticipants.ts](mdc:src/hooks/useParticipants.ts), [useTeamData.ts](mdc:src/hooks/useTeamData.ts), [useConfig.ts](mdc:src/hooks/useConfig.ts)
+- Auth/access: [useCurrentUser.ts](mdc:src/hooks/useCurrentUser.ts), [useTeamAccess.ts](mdc:src/hooks/useTeamAccess.ts)
+- Generic API: [useApi.ts](mdc:src/hooks/useApi.ts)
+- Barrel: [index.ts](mdc:src/hooks/index.ts)
+
+### `src/lib/` — Server & Shared Utilities
+
+Cross-cutting modules used by API routes and (sometimes) the client.
+
+- [db.ts](mdc:src/lib/db.ts) — Prisma client singleton
+- [auth.ts](mdc:src/lib/auth.ts), [jwt.ts](mdc:src/lib/jwt.ts) — Auth + token helpers
+- [permissions.ts](mdc:src/lib/permissions.ts) — Role / team access checks
+- [api-response.ts](mdc:src/lib/api-response.ts) — Standardized API JSON responses
+- [httpClient.ts](mdc:src/lib/httpClient.ts) — Fetch wrapper for client calls
+- [schemas.ts](mdc:src/lib/schemas.ts) — Zod validation schemas
+- [audit.ts](mdc:src/lib/audit.ts), [logger.ts](mdc:src/lib/logger.ts) — Audit log + structured logging
+- [rateLimit.ts](mdc:src/lib/rateLimit.ts) — Rate-limit middleware
+- [env.ts](mdc:src/lib/env.ts) — Validated env vars
+- [utils.ts](mdc:src/lib/utils.ts) — Generic helpers
+- `domain/` — Pure business logic (with co-located `*.test.ts` Vitest files)
+  - [debt.ts](mdc:src/lib/domain/debt.ts), [expenses.ts](mdc:src/lib/domain/expenses.ts), [history.ts](mdc:src/lib/domain/history.ts), [participantStats.ts](mdc:src/lib/domain/participantStats.ts), [summary.ts](mdc:src/lib/domain/summary.ts)
+- `utils/` — Domain-adjacent helpers, e.g. [whatsapp.ts](mdc:src/lib/utils/whatsapp.ts)
+
+**Convention:** Pure, framework-free business logic belongs in `lib/domain/` and is the only place tests are co-located.
+
+### `src/services/` — Client-side API Layer
+
+Thin wrappers over `httpClient` that expose typed CRUD operations to containers/hooks.
+
+- [payments.ts](mdc:src/services/payments.ts), [expenses.ts](mdc:src/services/expenses.ts), [participants.ts](mdc:src/services/participants.ts), [config.ts](mdc:src/services/config.ts)
+- [types.ts](mdc:src/services/types.ts), barrel [index.ts](mdc:src/services/index.ts)
+
+### `src/types/` — Shared Types
+
+- [index.ts](mdc:src/types/index.ts) — exported app-wide TS types/interfaces
+
+## `prisma/` — Database
+
+- [schema.prisma](mdc:prisma/schema.prisma) — single source of truth for the data model. Key models: `Team`, `User`, `UserTeam`, `Participant`, `Payment`, `Expense`, `Config`, `MonthlyConfig`, `ParticipantMonthlyStatus`, `AuditLog`.
+- `migrations/` — generated migrations (gitignored except `migration_lock.toml`)
+
+## `scripts/` — Ops Scripts
+
+Standalone Node/PowerShell scripts run outside Next.js:
+- [backup-db.ps1](mdc:scripts/backup-db.ps1) / [backup-db.sh](mdc:scripts/backup-db.sh) — DB dumps
+- [createUser.js](mdc:scripts/createUser.js), [listUsers.js](mdc:scripts/listUsers.js), [clearLoginAttempts.js](mdc:scripts/clearLoginAttempts.js), [dbCounts.js](mdc:scripts/dbCounts.js)
+
+## Key Configuration Files
+
+- [package.json](mdc:package.json) — scripts: `dev`, `build` (runs `prisma generate` first), `start`, `test` (Vitest), `lint`, `db:migrate`, `db:push`, `db:seed`
+- [next.config.js](mdc:next.config.js) — Webpack alias `@` → `src/`; Turbopack root pinned
+- [tsconfig.json](mdc:tsconfig.json) — `baseUrl: "src"`, path alias `@/*` → `*`
+- [vitest.config.ts](mdc:vitest.config.ts) — Vitest configuration
+- [Dockerfile](mdc:Dockerfile) — production image build
+
+## Import Conventions
+
+Always use the `@/` alias (mapped to `src/`) instead of relative paths that traverse upward:
+
+```typescript
+// Good
+import { prisma } from '@/lib/db';
+import { Dashboard } from '@/components/Dashboard';
+import { useTeamData } from '@/hooks/useTeamData';
+
+// Bad
+import { prisma } from '../../../lib/db';
+import { Dashboard } from '../../components/Dashboard';
+```
+
+## Where to Put New Code
+
+| New code type                        | Location                              |
+| ------------------------------------ | ------------------------------------- |
+| New page/route                       | `src/app/<segment>/page.tsx`          |
+| New API endpoint                     | `src/app/api/<segment>/route.ts`      |
+| Admin-only API endpoint              | `src/app/api/admin/<segment>/route.ts`|
+| Pure UI component                    | `src/components/<Name>.tsx`           |
+| Stateful wrapper for a section       | `src/containers/<Name>Container.tsx`  |
+| Reusable hook                        | `src/hooks/use<Name>.ts`              |
+| Client-side API caller               | `src/services/<resource>.ts`          |
+| Pure business logic + unit tests     | `src/lib/domain/<name>.ts` (+ `.test.ts`) |
+| Server util (auth, db, validation…)  | `src/lib/<name>.ts`                   |
+| Shared TS types                      | `src/types/index.ts`                  |
+| Prisma model change                  | `prisma/schema.prisma` (+ migration)  |
+| One-off DB / ops script              | `scripts/<name>.{js,ps1,sh}`          |
+
+## Forbidden / Avoid
+
+- Do not place tests outside `src/lib/domain/` unless extending the test setup.
+- Do not import from `.next/`, `node_modules/`, or generated files directly.
+- Do not bypass [permissions.ts](mdc:src/lib/permissions.ts) in `api/admin/*` or team-scoped routes.
+- Do not create new top-level folders under `src/`; reuse the existing 8 directories.

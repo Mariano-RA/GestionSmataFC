@@ -16,15 +16,16 @@ export function computeParticipantPaymentStats(
   participants: Participant[],
   payments: Payment[],
   currentMonth: string,
-  getRequiredAmount: (p: Participant) => number
+  getRequiredAmount: (p: Participant) => number,
+  getRequiredAmountForMonth?: (p: Participant, month: string) => number
 ): ParticipantPaymentStat[] {
   const active = participants.filter(p => p.active);
   return active
     .map(p => {
       const paid = payments
-        .filter(pay => pay.participantId === p.id && pay.date.startsWith(currentMonth))
+        .filter(pay => pay.participantId === p.id && (pay.appliedMonth ?? pay.date.slice(0, 7)) === currentMonth)
         .reduce((sum, pay) => sum + pay.amount, 0);
-      const required = getRequiredAmount(p);
+      const required = getRequiredAmountForMonth ? getRequiredAmountForMonth(p, currentMonth) : getRequiredAmount(p);
       const missing = Math.max(0, required - paid);
       const percentage = required > 0 ? (paid / required) * 100 : 100;
       return {

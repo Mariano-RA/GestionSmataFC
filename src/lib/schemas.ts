@@ -104,6 +104,7 @@ export const createPaymentSchema = z.object({
   teamId: z.coerce.number().int().positive('Team ID requerido'),
   participantId: z.coerce.number().int().positive('Participant ID requerido'),
   date: z.string('Fecha requerida').min(1, 'Fecha requerida'),
+  appliedMonth: z.string().regex(/^\d{4}-\d{2}$/, 'Mes inválido (YYYY-MM)').optional(),
   amount: z.coerce.number('Monto requerido').positive('Debe ser positivo'),
   method: z.string().optional(),
   note: z.string().optional(),
@@ -114,6 +115,7 @@ export type CreatePaymentRequest = z.infer<typeof createPaymentSchema>;
 export const updatePaymentSchema = z.object({
   participantId: z.coerce.number().int().positive('Participant ID requerido').optional(),
   date: z.string('Fecha requerida').min(1, 'Fecha requerida').optional(),
+  appliedMonth: z.string().regex(/^\d{4}-\d{2}$/, 'Mes inválido (YYYY-MM)').nullable().optional(),
   amount: z.coerce.number('Monto requerido').positive('Debe ser positivo').optional(),
   method: z.string().nullable().optional(),
   note: z.string().nullable().optional(),
