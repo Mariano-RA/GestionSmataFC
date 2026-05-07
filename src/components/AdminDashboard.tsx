@@ -276,7 +276,7 @@ export default function AdminDashboard() {
       .filter(Boolean)
       .map((s) => parseInt(s, 10))
       .filter((n) => !Number.isNaN(n) && n > 0);
-    const unique = [...new Set(ids)];
+    const unique = Array.from(new Set(ids));
     if (unique.length === 0) {
       toast.error('Indicá al menos un Team ID (números separados por coma)');
       return;
@@ -284,7 +284,7 @@ export default function AdminDashboard() {
     const closeMonths: string[] = [];
     if (snapshotClosePreviousMonth) closeMonths.push(addMonths(getCurrentMonth(), -1));
     if (snapshotCloseCurrentMonth) closeMonths.push(getCurrentMonth());
-    const uniqueCloseMonths = [...new Set(closeMonths)];
+    const uniqueCloseMonths = Array.from(new Set(closeMonths));
     const closeHint =
       uniqueCloseMonths.length > 0
         ? `\n\nLuego se ejecutará cierre de mes (objetivo/alquiler/gastos en cuota desde BD) para: ${uniqueCloseMonths.join(', ')}.`

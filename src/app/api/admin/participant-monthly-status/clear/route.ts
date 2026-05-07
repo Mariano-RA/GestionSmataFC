@@ -33,9 +33,9 @@ export async function POST(request: NextRequest) {
     }
 
     const { teamIds, closeMonths: closeMonthsRaw } = parsed.data;
-    const uniqueTeamIds = [...new Set(teamIds)];
+    const uniqueTeamIds = Array.from(new Set(teamIds));
     const uniqueCloseMonths = closeMonthsRaw?.length
-      ? [...new Set(closeMonthsRaw)].sort()
+      ? Array.from(new Set(closeMonthsRaw)).sort()
       : [];
     const ip = getClientIp(request) ?? undefined;
 
@@ -61,7 +61,6 @@ export async function POST(request: NextRequest) {
       userId: auth.userId,
       action: 'DELETE',
       entity: 'ParticipantMonthlyStatus',
-      entityId: null,
       description: `Eliminación masiva de snapshots mensuales (${result.count} filas) para equipos: ${uniqueTeamIds.join(', ')}`,
       metadata: {
         teamIds: uniqueTeamIds,
