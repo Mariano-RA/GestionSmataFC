@@ -1,9 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { formatCurrency, getMonthName, normalizeName, parseYMDToLocalDate } from '@/lib/utils';
+import {
+  formatCurrency,
+  formatMonthShortLabel,
+  getMonthName,
+  normalizeName,
+  parseYMDToLocalDate,
+} from '@/lib/utils';
 import { buildDebtReminderMessage, openWhatsAppForDebtor as openWhatsApp } from '@/lib/utils/whatsapp';
 import {
+  buildDebtMatrixMonths,
+  computeParticipantDebtMatrixRow,
   computeParticipantsWithDebtStatus,
   filterDebtorsByType,
   type DebtFilterType,
@@ -26,6 +34,7 @@ interface DebtorsProps {
   monthlyShare: number;
   currentMonth: string;
   addToast: (message: string, type: 'success' | 'error' | 'info') => void;
+  onShowHistory: (id: number, name: string) => void;
 }
 
 export default function Debtors({
@@ -36,10 +45,12 @@ export default function Debtors({
   historyMonths,
   monthlyShare,
   currentMonth,
-  addToast
+  addToast,
+  onShowHistory,
 }: DebtorsProps) {
   const [filterType, setFilterType] = useState<DebtFilterType>('all');
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [viewMode, setViewMode] = useState<'list' | 'matrix'>('list');
 
   const computed = computeParticipantsWithDebtStatus(
     participants,
@@ -60,6 +71,8 @@ export default function Debtors({
   const debtors = allParticipantsStatus.filter(p => p.debt > 0);
   const filtered = filterDebtorsByType(allParticipantsStatus, filterType);
 
+  const matrixMonths = buildDebtMatrixMonths(currentMonth);
+
   const handleOpenWhatsApp = (p: typeof allParticipantsStatus[0]) => {
     const message = buildDebtReminderMessage(
       p.name,
@@ -74,6 +87,32 @@ export default function Debtors({
 
   return (
     <div className="tab-content">
+      <div
+        style={{
+          marginBottom: '12px',
+          display: 'flex',
+          gap: '8px',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+        }}
+      >
+        <span style={{ fontSize: '13px', color: 'var(--text-secondary)', marginRight: '4px' }}>Vista:</span>
+        <button
+          type="button"
+          className={`filter-btn ${viewMode === 'list' ? 'active' : ''}`}
+          onClick={() => setViewMode('list')}
+        >
+          Lista
+        </button>
+        <button
+          type="button"
+          className={`filter-btn ${viewMode === 'matrix' ? 'active' : ''}`}
+          onClick={() => setViewMode('matrix')}
+        >
+          Vista mensual
+        </button>
+      </div>
+
       <div style={{ marginBottom: '10px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
         <button
           className={`filter-btn ${filterType === 'all' ? 'active' : ''}`}
@@ -102,7 +141,7 @@ export default function Debtors({
       </div>
 
       <div id="debtorsList">
-        {participants.length > 0 && (
+        {viewMode === 'list' && participants.length > 0 && (
           <button
             className="btn btn-warning"
             style={{ width: '100%', marginBottom: '12px', background: '#FFD700', color: '#000' }}
@@ -127,10 +166,90 @@ export default function Debtors({
             📋 Copiar Estado para WhatsApp
           </button>
         )}
+        {viewMode === 'matrix' && (
+          <p className="debt-matrix-hint">
+            En pantallas chicas podés desplazar la tabla horizontalmente. La lectura prioriza escritorio.
+          </p>
+        )}
         {filtered.length === 0 ? (
           <div className="empty-state">
             <div className="empty-state-icon">{filterType === 'completed' ? '✅' : '🎉'}</div>
             <p>{filterType === 'completed' ? 'Todos completaron el pago' : '¡Sin deudas!'}</p>
+          </div>
+        ) : viewMode === 'matrix' ? (
+          <div className="debt-matrix-wrap">
+            <table className="debt-matrix-table" aria-label="Deuda por jugador y por mes (misma lógica que el historial individual)">
+              <thead>
+                <tr>
+                  <th scope="col">Jugador</th>
+                  {matrixMonths.map((m) => (
+                    <th
+                      key={m}
+                      scope="col"
+                      className={m === currentMonth ? 'col-current-month' : undefined}
+                    >
+                      {formatMonthShortLabel(m)}
+                      {m === currentMonth ? (
+                        <span className="debt-matrix-current-badge" title="Mes de trabajo del equipo">
+                          {' '}
+                          · actual
+                        </span>
+                      ) : null}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((p) => {
+                  const cells = computeParticipantDebtMatrixRow(
+                    p,
+                    payments,
+                    matrixMonths,
+                    getRequiredAmountForMonth
+                  );
+                  return (
+                    <tr key={p.id}>
+                      <th scope="row">
+                        <button
+                          type="button"
+                          className="debt-matrix-name-btn"
+                          onClick={() => onShowHistory(p.id, p.name)}
+                          aria-label={`Ver historial y detalle de ${normalizeName(p.name)}`}
+                        >
+                          {normalizeName(p.name)}
+                        </button>
+                      </th>
+                      {cells.map((cell) => {
+                        const noQuota = cell.required <= 0;
+                        const ok = !noQuota && cell.debtMonth <= 0;
+                        const label =
+                          noQuota ? 'Sin cuota' : ok ? 'Al día' : `Debe ${formatCurrency(cell.debtMonth)}`;
+                        return (
+                          <td
+                            key={cell.month}
+                            className={cell.month === currentMonth ? 'col-current-month' : undefined}
+                            aria-label={`${formatMonthShortLabel(cell.month)}: ${label}`}
+                          >
+                            <span
+                              className={
+                                noQuota
+                                  ? 'debt-matrix-cell debt-matrix-cell--muted'
+                                  : ok
+                                    ? 'debt-matrix-cell debt-matrix-cell--ok'
+                                    : 'debt-matrix-cell debt-matrix-cell--debt'
+                              }
+                              title={`Pagado ${formatCurrency(cell.paid)}, requerido ${formatCurrency(cell.required)}, faltante del mes ${formatCurrency(cell.debtMonth)}`}
+                            >
+                              {noQuota ? '—' : ok ? '✓' : formatCurrency(cell.debtMonth)}
+                            </span>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         ) : (
           filtered.map(p => {
@@ -145,7 +264,17 @@ export default function Debtors({
                   onClick={() => setExpandedId(expandedId === p.id ? null : p.id)}
                 >
                   <div style={{ flex: 1 }}>
-                    <strong>{normalizeName(p.name)}</strong>
+                    <button
+                      type="button"
+                      className="debtors-name-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onShowHistory(p.id, p.name);
+                      }}
+                      aria-label={`Ver historial y detalle de ${normalizeName(p.name)}`}
+                    >
+                      {normalizeName(p.name)}
+                    </button>
                     <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
                       <span>{formatCurrency(p.paid)}</span>
                       <span style={{ margin: '0 6px' }}>/</span>
@@ -198,7 +327,7 @@ export default function Debtors({
         )}
       </div>
 
-      {debtors.length > 0 && (
+      {viewMode === 'list' && debtors.length > 0 && (
         <div className="total-row" style={{ marginTop: '15px' }}>
           <span>Deuda Total {filterType !== 'all' && `(${filterType}):`}</span>
           <span>{formatCurrency(

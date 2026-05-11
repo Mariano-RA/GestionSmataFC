@@ -3,7 +3,11 @@
 import { useTeamDataContext } from '@/context/TeamDataContext';
 import Debtors from '@/components/Debtors';
 
-export default function DebtorsContainer() {
+interface DebtorsContainerProps {
+  onShowHistory: (id: number, name: string) => void;
+}
+
+export default function DebtorsContainer({ onShowHistory }: DebtorsContainerProps) {
   const data = useTeamDataContext();
   const historyMonths = Array.from(
     new Set([
@@ -21,6 +25,7 @@ export default function DebtorsContainer() {
       monthlyShare={data.monthlyShare}
       currentMonth={data.currentMonth}
       addToast={data.addToast}
+      onShowHistory={onShowHistory}
     />
   );
 }

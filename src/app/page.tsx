@@ -41,7 +41,13 @@ function HomeContent({
 
   return (
     <>
-      <div className={activeTab === 'participants' ? 'container container--wide' : 'container'}>
+      <div
+        className={
+          activeTab === 'participants' || activeTab === 'debtors'
+            ? 'container container--wide'
+            : 'container'
+        }
+      >
         <MonthlyProgressBarContainer />
 
         {activeTab === 'dashboard' && <DashboardContainer />}
@@ -52,7 +58,11 @@ function HomeContent({
         )}
         {activeTab === 'payments' && <PaymentsContainer />}
         {activeTab === 'expenses' && <ExpensesContainer />}
-        {activeTab === 'debtors' && <DebtorsContainer />}
+        {activeTab === 'debtors' && (
+          <DebtorsContainer
+            onShowHistory={(id, name) => setHistoryModal({ open: true, id, name })}
+          />
+        )}
         {activeTab === 'comparison' && <ComparisonContainer />}
         {activeTab === 'settings' && <SettingsContainer />}
       </div>

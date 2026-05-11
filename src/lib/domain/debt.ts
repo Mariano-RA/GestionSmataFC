@@ -1,5 +1,6 @@
 import type { Participant, Payment } from '@/types';
-import { parseYMDToLocalDate } from '@/lib/utils';
+import { addMonths, parseYMDToLocalDate } from '@/lib/utils';
+import { computeMonthlyHistory, type MonthlyHistoryItem } from './history';
 
 export interface ParticipantWithDebtStatus extends Participant {
   required: number;
@@ -81,6 +82,28 @@ export function computeParticipantsWithDebtStatus(
 }
 
 export type DebtFilterType = 'all' | 'high' | 'medium' | 'completed';
+
+/** Cinco meses consecutivos: cuatro anteriores al mes de trabajo del equipo + el mes actual. */
+export function buildDebtMatrixMonths(currentMonth: string): string[] {
+  return [-4, -3, -2, -1, 0]
+    .map((d) => addMonths(currentMonth, d))
+    .sort((a, b) => a.localeCompare(b));
+}
+
+/**
+ * Deuda por mes para la matriz de deudores; misma lógica que el historial individual (`computeMonthlyHistory`).
+ */
+export function computeParticipantDebtMatrixRow(
+  participant: Participant,
+  payments: Payment[],
+  matrixMonths: string[],
+  getRequiredAmountForMonth: (p: Participant, month: string) => number
+): MonthlyHistoryItem[] {
+  const participantPayments = payments.filter((pay) => pay.participantId === participant.id);
+  return computeMonthlyHistory(participantPayments, matrixMonths, (month) =>
+    getRequiredAmountForMonth(participant, month)
+  );
+}
 
 /**
  * Filtra la lista de participantes con estado de deuda según el tipo de filtro.

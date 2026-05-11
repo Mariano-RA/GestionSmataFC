@@ -1,6 +1,11 @@
 'use client';
 
-import { normalizeName, parseYMDToLocalDate, formatCurrency } from '@/lib/utils';
+import {
+  normalizeName,
+  parseYMDToLocalDate,
+  formatCurrency,
+  formatMonthShortLabel,
+} from '@/lib/utils';
 import type { Payment, ParticipantStatus } from '@/types';
 
 interface MonthlyHistoryItem {
@@ -17,6 +22,20 @@ interface MonthlyDetails {
   objective: number;
   effectiveParticipants: number;
   share: number;
+}
+
+const STATUS_LABELS: Record<ParticipantStatus, string> = {
+  activo: 'Activo',
+  sin_laburo: 'Sin trabajo',
+  lesionado: 'Lesionado',
+  media_cuota: 'Media cuota',
+};
+
+function estadoJugadorLabel(d: MonthlyDetails | undefined): string {
+  if (!d) return '—';
+  if (!d.active) return 'Inactivo';
+  const s = (d.status ?? 'activo') as ParticipantStatus;
+  return STATUS_LABELS[s] ?? s;
 }
 
 interface HistoryModalProps {
@@ -44,7 +63,7 @@ export default function HistoryModal({
 
   return (
     <div className={`modal ${isOpen ? 'active' : ''}`} onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-content modal-content--history" onClick={(e) => e.stopPropagation()}>
         <button className="close-btn" onClick={onClose}>×</button>
         <h3>{normalizeName(participantName)}</h3>
 
@@ -53,37 +72,52 @@ export default function HistoryModal({
           {monthlyHistory.length === 0 ? (
             <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Sin meses para mostrar</p>
           ) : (
-            <div style={{ maxHeight: '240px', overflowY: 'auto', fontSize: '12px' }}>
-              {monthlyHistory.map(item => (
-                <div key={item.month} style={{ padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr 1fr 1fr 1fr', gap: '6px' }}>
-                    <span style={{ color: 'var(--text)', fontWeight: 600 }}>{item.month}</span>
-                    <span style={{ color: 'var(--text-secondary)' }}>P: {formatCurrency(item.paid)}</span>
-                    <span style={{ color: 'var(--text-secondary)' }}>R: {formatCurrency(item.required)}</span>
-                    <span style={{ color: item.debtMonth > 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 600 }}>
-                      Mes: {formatCurrency(item.debtMonth)}
-                    </span>
-                    <span style={{ color: item.debtAccumulated > 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 600 }}>
-                      Acum: {formatCurrency(item.debtAccumulated)}
-                    </span>
-                  </div>
-                  {(() => {
+            <div className="history-modal-monthly-scroll" style={{ maxHeight: '280px', overflowY: 'auto', fontSize: '12px' }}>
+              <table className="history-modal-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Mes</th>
+                    <th scope="col">Estado del jugador</th>
+                    <th scope="col" className="history-modal-table__num">
+                      Pagado
+                    </th>
+                    <th scope="col" className="history-modal-table__num">
+                      Deuda
+                    </th>
+                    <th scope="col" className="history-modal-table__num">
+                      Acumulado
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {monthlyHistory.map((item) => {
                     const d = monthlyDetailsByMonth[item.month];
-                    if (!d) return null;
                     return (
-                      <div style={{ marginTop: '6px', color: 'var(--text-secondary)' }}>
-                        <span>Estado: <strong style={{ color: 'var(--text)' }}>{d.active ? (d.status ?? 'activo') : 'inactivo'}</strong></span>
-                        <span style={{ margin: '0 8px' }}>•</span>
-                        <span>Objetivo: <strong style={{ color: 'var(--text)' }}>{formatCurrency(d.objective)}</strong></span>
-                        <span style={{ margin: '0 8px' }}>•</span>
-                        <span>Efec.: <strong style={{ color: 'var(--text)' }}>{d.effectiveParticipants.toLocaleString('es-AR')}</strong></span>
-                        <span style={{ margin: '0 8px' }}>•</span>
-                        <span>Cuota base: <strong style={{ color: 'var(--text)' }}>{formatCurrency(d.share)}</strong></span>
-                      </div>
+                      <tr key={item.month}>
+                        <td>{formatMonthShortLabel(item.month)}</td>
+                        <td>{estadoJugadorLabel(d)}</td>
+                        <td className="history-modal-table__num">{formatCurrency(item.paid)}</td>
+                        <td
+                          className="history-modal-table__num history-modal-table__emph"
+                          style={{
+                            color: item.debtMonth > 0 ? 'var(--danger)' : 'var(--success)',
+                          }}
+                        >
+                          {formatCurrency(item.debtMonth)}
+                        </td>
+                        <td
+                          className="history-modal-table__num history-modal-table__emph"
+                          style={{
+                            color: item.debtAccumulated > 0 ? 'var(--danger)' : 'var(--success)',
+                          }}
+                        >
+                          {formatCurrency(item.debtAccumulated)}
+                        </td>
+                      </tr>
                     );
-                  })()}
-                </div>
-              ))}
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </div>

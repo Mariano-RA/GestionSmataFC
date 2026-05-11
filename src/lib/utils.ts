@@ -14,6 +14,13 @@ export function getMonthName(m: string): string {
   return d.toLocaleDateString('es-AR', { month: 'long' }).toUpperCase();
 }
 
+/** Etiqueta corta para cabeceras de tabla (ej. "ene 2026"). `month` en YYYY-MM. */
+export function formatMonthShortLabel(month: string): string {
+  const [y, mon] = month.split('-').map(Number);
+  const d = new Date(y, (mon ?? 1) - 1, 1);
+  return d.toLocaleDateString('es-AR', { month: 'short', year: 'numeric' });
+}
+
 function pad2(n: number): string {
   return String(n).padStart(2, '0');
 }

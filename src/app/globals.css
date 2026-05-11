@@ -745,6 +745,57 @@ select:focus {
   border: 1px solid var(--border);
 }
 
+/* Modal de historial del jugador: más ancho para la tabla mensual (P/R/Mes/Acum) */
+.modal-content--history {
+  max-width: min(96vw, 860px);
+}
+
+.history-modal-monthly-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.history-modal-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.history-modal-table th,
+.history-modal-table td {
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  vertical-align: middle;
+}
+
+.history-modal-table thead th {
+  background: var(--bg-primary);
+  font-weight: 600;
+  color: var(--text);
+  text-align: left;
+}
+
+.history-modal-table tbody tr:nth-child(even) {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+:root.dark-mode .history-modal-table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.history-modal-table__num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.history-modal-table thead th.history-modal-table__num {
+  text-align: right;
+}
+
+.history-modal-table__emph {
+  font-weight: 600;
+}
+
 .modal-content h2 {
   margin-top: 0;
   margin-bottom: 20px;
@@ -1020,6 +1071,128 @@ select:focus {
     padding: 8px 6px;
     gap: 4px;
   }
+}
+
+/* Matriz de deudores (Deudores → Vista mensual) */
+.debt-matrix-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.debt-matrix-table {
+  width: 100%;
+  min-width: 520px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.debt-matrix-table th,
+.debt-matrix-table td {
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.debt-matrix-table th:first-child,
+.debt-matrix-table td:first-child {
+  text-align: left;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--bg-primary);
+  box-shadow: 3px 0 6px rgba(0, 0, 0, 0.06);
+}
+
+.debt-matrix-table thead th {
+  background: var(--bg-secondary);
+  font-weight: 600;
+}
+
+.debt-matrix-table .col-current-month {
+  background: rgba(253, 218, 36, 0.12);
+}
+
+:root.dark-mode .debt-matrix-table .col-current-month {
+  background: rgba(253, 218, 36, 0.1);
+}
+
+.debt-matrix-table thead th.col-current-month {
+  background: rgba(253, 218, 36, 0.22);
+}
+
+:root.dark-mode .debt-matrix-table thead th.col-current-month {
+  background: rgba(253, 218, 36, 0.14);
+}
+
+.debt-matrix-current-badge {
+  font-weight: 500;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.debt-matrix-cell {
+  font-weight: 600;
+  display: inline-block;
+  min-width: 1.5rem;
+}
+
+.debt-matrix-cell--ok {
+  color: var(--success);
+}
+
+.debt-matrix-cell--debt {
+  color: var(--danger);
+}
+
+.debt-matrix-cell--muted {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.debt-matrix-hint {
+  display: none;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+  line-height: 1.35;
+}
+
+@media (max-width: 768px) {
+  .debt-matrix-hint {
+    display: block;
+  }
+}
+
+/* Nombre del jugador → mismo modal de historial que en Participantes */
+.debt-matrix-name-btn,
+.debtors-name-btn {
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-weight: 700;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  max-width: 100%;
+}
+
+.debt-matrix-name-btn:hover,
+.debt-matrix-name-btn:focus-visible,
+.debtors-name-btn:hover,
+.debtors-name-btn:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  color: var(--heading);
+}
+
+.debt-matrix-name-btn:focus-visible,
+.debtors-name-btn:focus-visible {
+  outline: 2px solid var(--secondary);
+  outline-offset: 2px;
 }
 
 @media (max-width: 400px) {

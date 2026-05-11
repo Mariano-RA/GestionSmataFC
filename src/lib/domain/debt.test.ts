@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
+  buildDebtMatrixMonths,
+  computeParticipantDebtMatrixRow,
   computeParticipantsWithDebtStatus,
   filterDebtorsByType,
   type ParticipantWithDebtStatus,
@@ -128,5 +130,28 @@ describe('filterDebtorsByType', () => {
     const filtered = filterDebtorsByType(all, 'completed');
     expect(filtered).toHaveLength(1);
     expect(filtered[0].id).toBe(2);
+  });
+});
+
+describe('buildDebtMatrixMonths', () => {
+  it('devuelve 5 meses: cuatro anteriores y el mes actual', () => {
+    const months = buildDebtMatrixMonths('2026-05');
+    expect(months).toEqual(['2026-01', '2026-02', '2026-03', '2026-04', '2026-05']);
+  });
+});
+
+describe('computeParticipantDebtMatrixRow', () => {
+  it('coincide con la deuda del mes del historial (faltante = requerido - pagado)', () => {
+    const p = participant({ id: 1 });
+    const payments: Payment[] = [
+      payment({ participantId: 1, date: '2026-03-10', amount: 400, appliedMonth: '2026-03' }),
+    ];
+    const matrixMonths = buildDebtMatrixMonths('2026-05');
+    const getRequired = () => 1000;
+    const row = computeParticipantDebtMatrixRow(p, payments, matrixMonths, () => getRequired());
+    const mar = row.find((r) => r.month === '2026-03');
+    expect(mar?.paid).toBe(400);
+    expect(mar?.required).toBe(1000);
+    expect(mar?.debtMonth).toBe(600);
   });
 });
