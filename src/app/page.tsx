@@ -43,7 +43,7 @@ function HomeContent({
     <>
       <div
         className={
-          activeTab === 'participants' || activeTab === 'debtors'
+          activeTab === 'dashboard' || activeTab === 'participants' || activeTab === 'debtors'
             ? 'container container--wide'
             : 'container'
         }

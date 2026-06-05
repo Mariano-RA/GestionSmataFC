@@ -2,6 +2,7 @@
 
 import { formatCurrency, getMonthName } from '@/lib/utils';
 import { computeMonthlySummary, buildDashboardCsvLines } from '@/lib/domain/summary';
+import { useState } from 'react';
 import ExpenseTrend from './ExpenseTrend';
 import PaymentStats from './PaymentStats';
 import type { Payment, Participant, Expense, AppConfig, ParticipantStatus } from '@/types';
@@ -25,6 +26,7 @@ export default function Dashboard({
   getRequiredAmount,
   getRequiredAmountForMonth,
 }: DashboardProps) {
+  const [summaryOpen, setSummaryOpen] = useState(true);
   const summary = computeMonthlySummary(
     participants,
     payments,
@@ -99,47 +101,88 @@ export default function Dashboard({
         </div>
       </div>
 
-      <div style={{ background: 'var(--bg-primary)', padding: '15px', borderRadius: '8px', marginBottom: '15px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', border: '1px solid var(--border)' }}>
-        <h3 style={{ marginBottom: '15px', color: 'var(--heading)' }}>🔔 Resumen</h3>
-        <div style={{ fontSize: '14px', lineHeight: '1.8', color: 'var(--text)' }}>
-          <p>🎯 Objetivo base: <strong>{formatCurrency(config.monthlyTarget)}</strong></p>
-          <p>🏟️ Alquileres: <strong>{formatCurrency(config.fieldRental)}</strong></p>
-          <p>🧾 Gastos incluidos en cuota: <strong>{formatCurrency(summary.includedExpensesForShare)}</strong></p>
-          <p>🎯 Objetivo del mes (incluye gastos): <strong>{formatCurrency(summary.monthlyObjective)}</strong></p>
-          <p>💸 Gastos registrados: <strong>{formatCurrency(summary.recordedExpenses)}</strong></p>
-          <p>💰 Recaudado: <strong>{formatCurrency(summary.collected)}</strong></p>
-          <p>📈 Ganancia Neta: <strong style={{ color: isProfitPositive ? 'var(--success)' : 'var(--danger)' }}>{formatCurrency(summary.profit)}</strong></p>
-          <p>⚠️ Deuda Pendiente: <strong>{formatCurrency(summary.totalDebt)}</strong></p>
-        </div>
-      </div>
-
-      <div style={{ background: 'var(--bg-primary)', padding: '15px', borderRadius: '8px', marginBottom: '15px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', border: '1px solid var(--border)' }}>
-        <h3 style={{ marginBottom: '12px', color: 'var(--heading)' }}>👥 Jugadores por estado (activos)</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px' }}>
-          {[
-            { key: 'activo', label: 'Activo' },
-            { key: 'media_cuota', label: 'Media cuota' },
-            { key: 'lesionado', label: 'Lesionado' },
-            { key: 'sin_laburo', label: 'Sin trabajo' },
-          ].map((s) => (
-            <div key={s.key} style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px 12px' }}>
-              <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '6px' }}>{s.label}</div>
-              <div style={{ fontSize: '22px', fontWeight: 'bold', color: 'var(--heading)' }}>{activeByStatus[s.key] ?? 0}</div>
+      {/* Collapsible Summary Card */}
+      <div className="dashboard-summary-row">
+        <div className="summary-card">
+          <div className="summary-card-header" onClick={() => setSummaryOpen(!summaryOpen)}>
+            <h3>🔔 Resumen del mes</h3>
+            <span className={`summary-card-toggle ${summaryOpen ? 'open' : ''}`}>▾</span>
+          </div>
+          {summaryOpen && (
+            <div className="summary-card-body">
+              <div className="summary-stat-row">
+                <span className="summary-stat-label">🎯 Objetivo base</span>
+                <span className="summary-stat-value">{formatCurrency(config.monthlyTarget)}</span>
+              </div>
+              <div className="summary-stat-row">
+                <span className="summary-stat-label">🏟️ Alquileres</span>
+                <span className="summary-stat-value">{formatCurrency(config.fieldRental)}</span>
+              </div>
+              <div className="summary-stat-row">
+                <span className="summary-stat-label">🧾 Gastos en cuota</span>
+                <span className="summary-stat-value">{formatCurrency(summary.includedExpensesForShare)}</span>
+              </div>
+              <div className="summary-stat-row">
+                <span className="summary-stat-label">🎯 Objetivo del mes</span>
+                <span className="summary-stat-value">{formatCurrency(summary.monthlyObjective)}</span>
+              </div>
+              <div className="summary-stat-row">
+                <span className="summary-stat-label">💸 Gastos registrados</span>
+                <span className="summary-stat-value">{formatCurrency(summary.recordedExpenses)}</span>
+              </div>
+              <div className="summary-stat-row">
+                <span className="summary-stat-label">💰 Recaudado</span>
+                <span className="summary-stat-value">{formatCurrency(summary.collected)}</span>
+              </div>
+              <div className="summary-stat-row">
+                <span className="summary-stat-label">📈 Ganancia Neta</span>
+                <span className="summary-stat-value" style={{ color: isProfitPositive ? 'var(--success)' : 'var(--danger)' }}>
+                  {formatCurrency(summary.profit)}
+                </span>
+              </div>
+              <div className="summary-stat-row">
+                <span className="summary-stat-label">⚠️ Deuda Pendiente</span>
+                <span className="summary-stat-value" style={{ color: 'var(--danger)' }}>{formatCurrency(summary.totalDebt)}</span>
+              </div>
             </div>
-          ))}
+          )}
+        </div>
+
+        {/* Players by status */}
+        <div className="summary-card">
+          <div className="summary-card-header">
+            <h3>👥 Jugadores por estado</h3>
+          </div>
+          <div className="summary-card-body">
+            <div className="players-status-grid">
+              {[
+                { key: 'activo', label: 'Activo' },
+                { key: 'media_cuota', label: 'Media cuota' },
+                { key: 'lesionado', label: 'Lesionado' },
+                { key: 'sin_laburo', label: 'Sin trabajo' },
+              ].map((s) => (
+                <div key={s.key} className="players-status-item">
+                  <div className="players-status-count">{activeByStatus[s.key] ?? 0}</div>
+                  <div className="players-status-label">{s.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
-      <PaymentStats
-        participants={participants}
-        payments={payments}
-        currentMonth={currentMonth}
-        getRequiredAmount={getRequiredAmount}
-        getRequiredAmountForMonth={getRequiredAmountForMonth}
-      />
-      <ExpenseTrend expenses={summary.monthExpenses} />
+      <div className="dashboard-charts-row">
+        <PaymentStats
+          participants={participants}
+          payments={payments}
+          currentMonth={currentMonth}
+          getRequiredAmount={getRequiredAmount}
+          getRequiredAmountForMonth={getRequiredAmountForMonth}
+        />
+        <ExpenseTrend expenses={summary.monthExpenses} />
+      </div>
 
-      <button className="btn btn-primary" style={{ marginTop: '15px' }} onClick={exportToCsv}>
+      <button className="btn btn-primary dashboard-export-btn" style={{ marginTop: '15px' }} onClick={exportToCsv}>
         📄 Exportar a CSV
       </button>
     </div>

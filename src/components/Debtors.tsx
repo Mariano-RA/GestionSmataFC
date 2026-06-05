@@ -86,91 +86,87 @@ export default function Debtors({
   };
 
   return (
-    <div className="tab-content">
-      <div
-        style={{
-          marginBottom: '12px',
-          display: 'flex',
-          gap: '8px',
-          flexWrap: 'wrap',
-          alignItems: 'center',
-        }}
-      >
-        <span style={{ fontSize: '13px', color: 'var(--text-secondary)', marginRight: '4px' }}>Vista:</span>
-        <button
-          type="button"
-          className={`filter-btn ${viewMode === 'list' ? 'active' : ''}`}
-          onClick={() => setViewMode('list')}
-        >
-          Lista
-        </button>
-        <button
-          type="button"
-          className={`filter-btn ${viewMode === 'matrix' ? 'active' : ''}`}
-          onClick={() => setViewMode('matrix')}
-        >
-          Vista mensual
-        </button>
+    <div className="tab-content debtors-tab">
+      {/* View mode + filters row */}
+      <div className="debtors-toolbar">
+        <div className="debtors-segment-group">
+          <button
+            type="button"
+            className={`debtors-segment-btn ${viewMode === 'list' ? 'active' : ''}`}
+            onClick={() => setViewMode('list')}
+          >
+            📋 Lista
+          </button>
+          <button
+            type="button"
+            className={`debtors-segment-btn ${viewMode === 'matrix' ? 'active' : ''}`}
+            onClick={() => setViewMode('matrix')}
+          >
+            📅 Mensual
+          </button>
+        </div>
       </div>
 
-      <div style={{ marginBottom: '10px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+      <div className="debtors-filter-row">
         <button
-          className={`filter-btn ${filterType === 'all' ? 'active' : ''}`}
+          className={`debtors-filter-btn ${filterType === 'all' ? 'active' : ''}`}
           onClick={() => setFilterType('all')}
         >
-          Pendientes ({debtors.length})
+          Pendientes <span className="debtors-filter-count">{debtors.length}</span>
         </button>
         <button
-          className={`filter-btn ${filterType === 'high' ? 'active' : ''}`}
+          className={`debtors-filter-btn ${filterType === 'high' ? 'active' : ''}`}
           onClick={() => setFilterType('high')}
         >
-          Crítico ({'>'} 50%)
+          Crítico
         </button>
         <button
-          className={`filter-btn ${filterType === 'medium' ? 'active' : ''}`}
+          className={`debtors-filter-btn ${filterType === 'medium' ? 'active' : ''}`}
           onClick={() => setFilterType('medium')}
         >
-          Parcial ({'<'} 50%)
+          Parcial
         </button>
         <button
-          className={`filter-btn ${filterType === 'completed' ? 'active' : ''}`}
+          className={`debtors-filter-btn ${filterType === 'completed' ? 'active' : ''}`}
           onClick={() => setFilterType('completed')}
         >
           Completos ✅
         </button>
       </div>
 
-      <div id="debtorsList">
-        {viewMode === 'list' && participants.length > 0 && (
-          <button
-            className="btn btn-warning"
-            style={{ width: '100%', marginBottom: '12px', background: '#FFD700', color: '#000' }}
-            onClick={() => {
-              const header = `Mes: ${getMonthName(currentMonth)} - Cuota: ${formatCurrency(monthlyShare)}`;
-              const listado = allParticipantsStatus
-                .map(p => {
-                  if ((p.status as ParticipantStatus) === 'sin_laburo') {
-                    return `${normalizeName(p.name)} (sin trabajo)`;
-                  }
-                  if (p.required > 0) {
-                    return p.paid === 0 ? normalizeName(p.name) : `${normalizeName(p.name)}: ${formatCurrency(p.paid)}`;
-                  }
-                  return normalizeName(p.name);
-                })
-                .join('\n');
-              const msg = `${header}\n${listado}`;
-              navigator.clipboard.writeText(msg);
-              addToast('Mensaje copiado al portapapeles', 'success');
-            }}
-          >
-            📋 Copiar Estado para WhatsApp
-          </button>
-        )}
-        {viewMode === 'matrix' && (
-          <p className="debt-matrix-hint">
-            En pantallas chicas podés desplazar la tabla horizontalmente. La lectura prioriza escritorio.
-          </p>
-        )}
+      {/* Copy to clipboard button */}
+      {viewMode === 'list' && participants.length > 0 && (
+        <button
+          className="debtors-copy-btn"
+          onClick={() => {
+            const header = `Mes: ${getMonthName(currentMonth)} - Cuota: ${formatCurrency(monthlyShare)}`;
+            const listado = allParticipantsStatus
+              .map(p => {
+                if ((p.status as ParticipantStatus) === 'sin_laburo') {
+                  return `${normalizeName(p.name)} (sin trabajo)`;
+                }
+                if (p.required > 0) {
+                  return p.paid === 0 ? normalizeName(p.name) : `${normalizeName(p.name)}: ${formatCurrency(p.paid)}`;
+                }
+                return normalizeName(p.name);
+              })
+              .join('\n');
+            const msg = `${header}\n${listado}`;
+            navigator.clipboard.writeText(msg);
+            addToast('Mensaje copiado al portapapeles', 'success');
+          }}
+        >
+          📋 Copiar Estado para WhatsApp
+        </button>
+      )}
+
+      {viewMode === 'matrix' && (
+        <p className="debt-matrix-hint">
+          En pantallas chicas podés desplazar la tabla horizontalmente. La lectura prioriza escritorio.
+        </p>
+      )}
+
+      <div id="debtorsList" className={viewMode === 'list' ? 'debtors-list' : ''}>
         {filtered.length === 0 ? (
           <div className="empty-state">
             <div className="empty-state-icon">{filterType === 'completed' ? '✅' : '🎉'}</div>
@@ -254,69 +250,69 @@ export default function Debtors({
         ) : (
           filtered.map(p => {
             const percentage = p.required > 0 ? (p.paid / p.required) * 100 : 100;
-            const debtClass = p.required > 0 && p.debt > p.required * 0.5 ? 'high-debt' : 'partial-debt';
+            const debtCritical = p.required > 0 && p.debt > p.required * 0.5;
             
             return (
-              <div key={p.id}>
-                <div 
-                  className={`list-item ${debtClass}`}
-                  style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                  onClick={() => setExpandedId(expandedId === p.id ? null : p.id)}
-                >
-                  <div style={{ flex: 1 }}>
-                    <button
-                      type="button"
-                      className="debtors-name-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onShowHistory(p.id, p.name);
-                      }}
-                      aria-label={`Ver historial y detalle de ${normalizeName(p.name)}`}
-                    >
-                      {normalizeName(p.name)}
-                    </button>
-                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                      <span>{formatCurrency(p.paid)}</span>
-                      <span style={{ margin: '0 6px' }}>/</span>
-                      <span>{formatCurrency(p.required)}</span>
-                      <span style={{ marginLeft: '8px', color: 'var(--text)' }}>({Math.round(percentage)}%)</span>
+              <div key={p.id} className="debtor-card" onClick={() => setExpandedId(expandedId === p.id ? null : p.id)}>
+                {/* Header: avatar + name + debt amount */}
+                <div className="debtor-card-header">
+                  <div className="debtor-card-user">
+                    <span className={`debtor-card-avatar ${debtCritical ? 'critical' : ''}`}>
+                      {normalizeName(p.name).charAt(0).toUpperCase()}
+                    </span>
+                    <div className="debtor-card-user-info">
+                      <button
+                        type="button"
+                        className="debtor-card-name-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onShowHistory(p.id, p.name);
+                        }}
+                      >
+                        {normalizeName(p.name)}
+                      </button>
+                      <div className="debtor-card-progress-text">
+                        {formatCurrency(p.paid)} / {formatCurrency(p.required)} · {Math.round(percentage)}%
+                      </div>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <span className="debtors-amount" style={{ fontSize: '14px' }}>{formatCurrency(p.debt)}</span>
+                  <div className="debtor-card-amount-section">
+                    <span className={`debtor-card-debt ${debtCritical ? 'critical' : ''}`}>
+                      {formatCurrency(p.debt)}
+                    </span>
                     {p.phone && p.debt > 0 && (
                       <button
+                        className="debtor-card-whatsapp"
                         title="Avisar por WhatsApp"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleOpenWhatsApp(p);
                         }}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          padding: '4px',
-                          color: '#25D366'
-                        }}
                       >
-                        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
                           <path d="M11.999 0a12 12 0 0 0-10.27 18.23l-1.63 5.56 5.68-1.49a12 12 0 1 0 6.22-22.3zM12 21.8c-1.61 0-3.19-.43-4.57-1.25l-.33-.2-3.4.89.9-3.32-.21-.34A9.85 9.85 0 0 1 12 2.18a9.85 9.85 0 0 1 0 19.62zm5.4-7.36c-.3-.15-1.76-.87-2.03-.97-.28-.1-.48-.15-.68.15-.2.3-.77.97-.94 1.17-.18.2-.35.23-.65.08-.3-.15-1.26-.46-2.4-1.48-.88-.79-1.48-1.78-1.65-2.08-.18-.3-.02-.46.12-.61.14-.14.3-.35.45-.52.15-.18.2-.3.3-.5.1-.2.05-.38-.03-.52-.08-.15-.68-1.65-.94-2.26-.25-.6-.5-.52-.68-.53h-.58c-.2 0-.53.08-.8.38-.28.3-1.05 1.03-1.05 2.5 0 1.48 1.08 2.92 1.23 3.12.15.2 2.13 3.25 5.15 4.55 2.05.88 2.65.95 3.5.9.82-.05 2.03-.82 2.33-1.62.3-.8.3-1.48.2-1.62-.1-.15-.4-.23-.7-.38z"/>
                         </svg>
                       </button>
                     )}
                   </div>
                 </div>
-                {/* Historial expandible */}
+
+                {/* Progress bar */}
+                <div className="debtor-card-progress-bar">
+                  <div
+                    className={`debtor-card-progress-fill ${debtCritical ? 'critical' : percentage >= 100 ? 'complete' : ''}`}
+                    style={{ width: `${Math.min(percentage, 100)}%` }}
+                  />
+                </div>
+
+                {/* Expandable payment history */}
                 {expandedId === p.id && p.paymentHistory.length > 0 && (
-                  <div style={{ padding: '10px 12px', background: 'var(--bg-secondary)', marginBottom: '8px', borderRadius: '4px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                    <p style={{ fontWeight: '600', marginBottom: '6px', color: 'var(--text)' }}>📜 Historial de pagos:</p>
+                  <div className="debtor-card-history">
+                    <p className="debtor-card-history-title">📜 Historial de pagos:</p>
                     {p.paymentHistory.map(pay => (
-                      <div key={pay.id} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                      <div key={pay.id} className="debtor-card-history-row">
                         <span>{parseYMDToLocalDate(pay.date).toLocaleDateString('es-AR')}</span>
-                        <span style={{ color: 'var(--success)', fontWeight: '600' }}>{formatCurrency(pay.amount)}</span>
+                        <span className="debtor-card-history-amount">{formatCurrency(pay.amount)}</span>
                       </div>
                     ))}
                   </div>
@@ -328,9 +324,9 @@ export default function Debtors({
       </div>
 
       {viewMode === 'list' && debtors.length > 0 && (
-        <div className="total-row" style={{ marginTop: '15px' }}>
-          <span>Deuda Total {filterType !== 'all' && `(${filterType}):`}</span>
-          <span>{formatCurrency(
+        <div className="debtors-total-row">
+          <span>Deuda Total {filterType !== 'all' && `(${filterType})`}</span>
+          <span className="debtors-total-amount">{formatCurrency(
             filterType === 'all' 
               ? debtors.reduce((sum, p) => sum + p.debt, 0)
               : filtered.reduce((sum, p) => sum + p.debt, 0)

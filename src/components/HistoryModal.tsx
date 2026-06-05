@@ -67,26 +67,23 @@ export default function HistoryModal({
         <button className="close-btn" onClick={onClose}>×</button>
         <h3>{normalizeName(participantName)}</h3>
 
-        <div style={{ margin: '12px 0 16px', background: 'var(--bg-secondary)', borderRadius: '8px', padding: '10px', border: '1px solid var(--border)' }}>
-          <p style={{ fontWeight: 600, marginBottom: '8px', color: 'var(--text)' }}>📊 Histórico de deuda por mes</p>
+        {/* Histórico de deuda mensual — responsivo */}
+        <div className="history-debt-card">
+          <p className="history-debt-title">📊 Histórico de deuda por mes</p>
           {monthlyHistory.length === 0 ? (
-            <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Sin meses para mostrar</p>
+            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', textAlign: 'center', padding: '12px' }}>
+              Sin meses para mostrar
+            </p>
           ) : (
-            <div className="history-modal-monthly-scroll" style={{ maxHeight: '280px', overflowY: 'auto', fontSize: '12px' }}>
+            <div className="history-debt-scroll">
               <table className="history-modal-table">
                 <thead>
                   <tr>
                     <th scope="col">Mes</th>
-                    <th scope="col">Estado del jugador</th>
-                    <th scope="col" className="history-modal-table__num">
-                      Pagado
-                    </th>
-                    <th scope="col" className="history-modal-table__num">
-                      Deuda
-                    </th>
-                    <th scope="col" className="history-modal-table__num">
-                      Acumulado
-                    </th>
+                    <th scope="col" className="hide-mobile">Estado</th>
+                    <th scope="col" className="history-modal-table__num">Pagado</th>
+                    <th scope="col" className="history-modal-table__num">Deuda</th>
+                    <th scope="col" className="history-modal-table__num hide-mobile">Acumulado</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -94,22 +91,18 @@ export default function HistoryModal({
                     const d = monthlyDetailsByMonth[item.month];
                     return (
                       <tr key={item.month}>
-                        <td>{formatMonthShortLabel(item.month)}</td>
-                        <td>{estadoJugadorLabel(d)}</td>
+                        <td className="history-month-label">{formatMonthShortLabel(item.month)}</td>
+                        <td className="hide-mobile">{estadoJugadorLabel(d)}</td>
                         <td className="history-modal-table__num">{formatCurrency(item.paid)}</td>
                         <td
                           className="history-modal-table__num history-modal-table__emph"
-                          style={{
-                            color: item.debtMonth > 0 ? 'var(--danger)' : 'var(--success)',
-                          }}
+                          style={{ color: item.debtMonth > 0 ? 'var(--danger)' : 'var(--success)' }}
                         >
                           {formatCurrency(item.debtMonth)}
                         </td>
                         <td
-                          className="history-modal-table__num history-modal-table__emph"
-                          style={{
-                            color: item.debtAccumulated > 0 ? 'var(--danger)' : 'var(--success)',
-                          }}
+                          className="history-modal-table__num history-modal-table__emph hide-mobile"
+                          style={{ color: item.debtAccumulated > 0 ? 'var(--danger)' : 'var(--success)' }}
                         >
                           {formatCurrency(item.debtAccumulated)}
                         </td>
@@ -121,33 +114,29 @@ export default function HistoryModal({
             </div>
           )}
         </div>
-        
+
+        {/* Lista de pagos — optimizada para mobile */}
         {payments.length === 0 ? (
-          <p style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>Sin pagos</p>
+          <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '12px' }}>Sin pagos registrados</p>
         ) : (
-          <div>
+          <div className="history-payments-list">
             {payments.map(p => (
-              <div key={p.id} className="list-item" style={{ marginBottom: '10px' }}>
-                <div>
-                  <strong>{parseYMDToLocalDate(p.date).toLocaleDateString('es-AR')}</strong>
+              <div key={p.id} className="history-payment-item">
+                <div className="history-payment-left">
+                  <span className="history-payment-date">
+                    {parseYMDToLocalDate(p.date).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
+                  </span>
                   {getPayMonth(p) !== p.date.slice(0, 7) && (
-                    <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                      Imputado a: <strong style={{ color: 'var(--text)' }}>{getPayMonth(p)}</strong>
-                    </div>
+                    <span className="history-payment-applied">
+                      → {getPayMonth(p)}
+                    </span>
                   )}
-                  <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                    {p.note || 'Sin notas'}
-                  </p>
+                  {p.note && <span className="history-payment-note">{p.note}</span>}
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <p style={{ fontWeight: 'bold', marginBottom: '5px' }}>
-                    {formatCurrency(p.amount)}
-                  </p>
-                  <button
-                    className="btn btn-danger btn-sm"
-                    onClick={() => onDeletePayment(p.id)}
-                  >
-                    🗑️ Eliminar
+                <div className="history-payment-right">
+                  <span className="history-payment-amount">{formatCurrency(p.amount)}</span>
+                  <button className="history-payment-delete" onClick={() => onDeletePayment(p.id)} title="Eliminar pago">
+                    🗑️
                   </button>
                 </div>
               </div>

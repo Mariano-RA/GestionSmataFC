@@ -130,33 +130,34 @@ export default function Payments({
   const [filterType, setFilterType] = useState<'recent' | 'all'>('recent');
 
   return (
-    <div className="tab-content">
-      <div style={{ marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <button
-            className={`filter-btn ${filterType === 'recent' ? 'active' : ''}`}
-            style={{marginBottom: '5px', width: '100px'}}
-            onClick={() => setFilterType('recent')}
-          >
-            Recientes
-          </button>
-          <button
-            className={`filter-btn ${filterType === 'all' ? 'active' : ''}`}
-            style={{marginBottom: '5px', width: '100px'}}
-            onClick={() => setFilterType('all')}
-          >
-            Todos
-          </button>
+    <div className="tab-content payments-tab">
+      <div className="payments-toolbar">
+        <div className="payments-toolbar-left">
+          <div className="payments-filter-group">
+            <button
+              className={`payments-filter-btn ${filterType === 'recent' ? 'active' : ''}`}
+              onClick={() => setFilterType('recent')}
+            >
+              Recientes
+            </button>
+            <button
+              className={`payments-filter-btn ${filterType === 'all' ? 'active' : ''}`}
+              onClick={() => setFilterType('all')}
+            >
+              Todos
+            </button>
+          </div>
         </div>
-        <button className="btn btn-primary" onClick={openAdd}>
-          ➕ Registrar Pago
+        <button className="btn btn-primary payments-add-btn-mobile" onClick={openAdd}>
+          ➕ Registrar
         </button>
       </div>
 
-      <h3 style={{ marginTop: '20px', marginBottom: '10px', color: 'var(--heading)' }}>
-        {filterType === 'recent' ? 'Pagos Recientes' : 'Todos los pagos del mes'}
+      <h3 className="payments-section-title">
+        {filterType === 'recent' ? '📄 Pagos Recientes' : '📋 Todos los pagos del mes'}
       </h3>
-      <div id="recentPayments">
+
+      <div id="recentPayments" className="payments-list">
         {((filterType === 'recent' ? recentPayments : allMonthPayments).length === 0) ? (
           <div className="empty-state">
             <div className="empty-state-icon">💸</div>
@@ -166,30 +167,36 @@ export default function Payments({
           (filterType === 'recent' ? recentPayments : allMonthPayments).map(p => {
             const participant = participants.find(part => part.id === p.participantId);
             return (
-              <div key={p.id} className="card paid">
-                <div className="card-header">
-                  <span>
-                    <strong>{participant ? normalizeName(participant.name) : ''}</strong>
-                    <span className="badge success" style={{ marginLeft: '8px' }}>
-                      {formatCurrency(p.amount)}
+              <div key={p.id} className="payment-card">
+                <div className="payment-card-header">
+                  <div className="payment-card-user">
+                    <span className="payment-card-avatar">
+                      {participant ? normalizeName(participant.name).charAt(0).toUpperCase() : '?'}
                     </span>
-                  </span>
-                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                    {parseYMDToLocalDate(p.date).toLocaleDateString('es-AR')}
-                  </span>
+                    <div className="payment-card-user-info">
+                      <span className="payment-card-name">
+                        <strong>{participant ? normalizeName(participant.name) : ''}</strong>
+                      </span>
+                      <span className="payment-card-date">
+                        {parseYMDToLocalDate(p.date).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="payment-card-amount">
+                    <span className="badge success">{formatCurrency(p.amount)}</span>
+                  </div>
                 </div>
-                {p.note && <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px' }}>{p.note}</p>}
-                <div className="card-actions btn-group">
-                  <button
-                    className="btn btn-secondary btn-sm"
-                    onClick={() => openEdit(p)}
-                  >
+                {(p.note || p.method) && (
+                  <div className="payment-card-meta">
+                    {p.method && <span className="payment-card-method">{p.method === 'cash' ? '💵 Efectivo' : p.method === 'bank' ? '🏦 Transferencia' : '📌 Otro'}</span>}
+                    {p.note && <span className="payment-card-note">📝 {p.note}</span>}
+                  </div>
+                )}
+                <div className="payment-card-actions">
+                  <button className="btn btn-secondary btn-sm" onClick={() => openEdit(p)}>
                     ✏️ Editar
                   </button>
-                  <button
-                    className="btn btn-danger btn-sm"
-                    onClick={() => onDelete(p.id)}
-                  >
+                  <button className="btn btn-danger btn-sm" onClick={() => onDelete(p.id)}>
                     🗑️ Eliminar
                   </button>
                 </div>

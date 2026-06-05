@@ -17,17 +17,18 @@ export default function Nav({ activeTab, onTabChange }: NavProps) {
   ];
 
   return (
-    <div className="nav-bar">
+    <nav className="nav-bar">
       {tabs.map(tab => (
         <button
           key={tab.id}
           className={`nav-item ${activeTab === tab.id ? 'active' : ''}`}
           onClick={() => onTabChange(tab.id)}
+          aria-label={tab.label}
         >
           <div className="nav-icon">{tab.icon}</div>
           {tab.label}
         </button>
       ))}
-    </div>
+    </nav>
   );
 }

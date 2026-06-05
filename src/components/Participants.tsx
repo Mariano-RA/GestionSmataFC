@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { isoInstantToDatetimeLocalValue, normalizeName } from '@/lib/utils';
 import type { Participant, Payment, ParticipantStatus } from '@/types';
 
@@ -36,66 +36,64 @@ function ParticipantCard({
   onRemove: (id: number) => void;
 }) {
   const balance = paid - required;
-  const statusClass = balance >= 0 ? 'success' : balance > -required * 0.3 ? 'warning' : 'danger';
+  const status = (p.status as ParticipantStatus) || 'activo';
+  const statusDotColor =
+    status === 'lesionado' ? 'var(--danger)' :
+    status === 'sin_laburo' ? '#b8860b' :
+    status === 'media_cuota' ? '#b8860b' :
+    'var(--success)';
 
   return (
-    <div className={`card ${statusClass} ${p.active ? 'active-participant' : 'inactive-participant'}`}>
-      <div className="card-header">
-        <span>
-          <span className={p.active ? 'active-icon' : 'inactive-icon'}>
-            {p.active ? '✓' : '○'}
-          </span>{' '}
+    <div className={`participant-card ${p.active ? '' : 'inactive'}`}>
+      {/* Header: nombre + punto de estado + badge de balance */}
+      <div className="participant-card-header">
+        <div className="participant-card-name">
+          <span
+            className="participant-card-status-dot"
+            style={{ background: p.active ? statusDotColor : 'var(--border)' }}
+          />
           <strong>{normalizeName(p.name)}</strong>
-          {p.status && p.status !== 'activo' && (
-            <span style={{ fontSize: '11px', marginLeft: '6px', opacity: 0.9 }}>
-              ({STATUS_LABELS[p.status as ParticipantStatus]})
-            </span>
-          )}
-        </span>
-        <span className={`badge ${balance >= 0 ? 'success' : 'danger'}`}>
+        </div>
+        <span className={`participant-card-badge badge ${balance >= 0 ? 'success' : 'danger'}`}>
           {balance >= 0 ? '+' : ''} ${balance.toLocaleString('es-AR')}
         </span>
       </div>
-      {p.phone && <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{p.phone}</p>}
-      {p.notes && <p style={{ fontSize: '12px', color: '#888', fontStyle: 'italic', marginBottom: '6px' }}>📝 {p.notes}</p>}
-      <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-        Pagado: ${paid.toLocaleString('es-AR')} / Requerido: ${required.toLocaleString('es-AR')}
-      </p>
-      <div className="card-actions btn-group">
-        <button
-          type="button"
-          className="btn btn-secondary btn-sm"
-          onClick={() => onEdit(p)}
-        >
-          ✏️ Editar
+
+      {/* Body: info financiera + extras */}
+      <div className="participant-card-body">
+
+        {/* Info financiera: Pagado / Requerido con label arriba y monto abajo */}
+        <div className="participant-card-finance-row">
+          <div className="participant-card-finance-item">
+            <div className="participant-card-finance-label">Pagado</div>
+            <div className="participant-card-finance-value">${paid.toLocaleString('es-AR')}</div>
+          </div>
+          <div className="participant-card-finance-divider" />
+          <div className="participant-card-finance-item">
+            <div className="participant-card-finance-label">Requerido</div>
+            <div className="participant-card-finance-value">${required.toLocaleString('es-AR')}</div>
+          </div>
+        </div>
+
+        {/* Teléfono + notas */}
+        {p.phone && <div className="participant-card-phone">📞 {p.phone}</div>}
+        {p.notes && <div className="participant-card-notes">📝 {p.notes}</div>}
+      </div>
+
+      {/* Acciones solo iconos */}
+      <div className="participant-card-actions">
+        <button type="button" className="btn btn-secondary" onClick={() => onEdit(p)} title="Editar">✏️</button>
+        <button type="button" className="btn btn-secondary" onClick={() => onHistory(p.id, p.name)} title="Historial">📋</button>
+        <button type="button" className={`btn ${p.active ? 'btn-warning' : 'btn-success'}`} onClick={() => onToggle(p.id)} title={p.active ? 'Suspender' : 'Activar'}>
+          {p.active ? '⏸️' : '▶️'}
         </button>
-        <button
-          type="button"
-          className="btn btn-secondary btn-sm"
-          onClick={() => onHistory(p.id, p.name)}
-        >
-          📋 Historial
-        </button>
-        <button
-          type="button"
-          className="btn btn-secondary btn-sm"
-          onClick={() => onToggle(p.id)}
-        >
-          {p.active ? '❌ Desactivar' : '✅ Activar'}
-        </button>
-        <button
-          type="button"
-          className="btn btn-danger btn-sm"
-          onClick={() => onRemove(p.id)}
-        >
-          🗑️ Eliminar
-        </button>
+        <button type="button" className="btn btn-danger" onClick={() => onRemove(p.id)} title="Eliminar">🗑️</button>
       </div>
     </div>
   );
 }
 
-/** Vista “tabla” en pantallas chicas: misma info que la grilla desktop, presentación densa (no duplica las cards). */
+/** Vista “tabla” compacta para mobile — info densa sin duplicar cards */
 function ParticipantMobileTableRow({
   p,
   paid,
@@ -115,90 +113,43 @@ function ParticipantMobileTableRow({
 }) {
   const balance = paid - required;
   const status = (p.status as ParticipantStatus) || 'activo';
-  const statusBg = status === 'lesionado' ? 'var(--danger)' : status === 'sin_laburo' ? 'var(--warning)' : status === 'media_cuota' ? 'var(--warning)' : 'var(--success)';
 
   return (
-    <div
-      className="participants-mobile-table-row"
-      style={{
-        border: '1px solid var(--border)',
-        borderRadius: '8px',
-        padding: '12px',
-        background: 'var(--bg-primary)',
-      }}
-    >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px', marginBottom: '8px' }}>
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <span className={p.active ? 'active-icon' : 'inactive-icon'} style={{ marginRight: '6px' }}>
-            {p.active ? '✓' : '○'}
-          </span>
-          <strong style={{ fontSize: '15px', wordBreak: 'break-word' }}>{normalizeName(p.name)}</strong>
+    <div className="participants-mobile-row">
+      {/* Línea 1: nombre + balance */}
+      <div className="mobile-row-main">
+        <div className="mobile-row-name">
+          <span className={`mobile-row-dot ${p.active ? 'dot-active' : 'dot-inactive'}`} />
+          <span className="mobile-row-name-text">{normalizeName(p.name)}</span>
         </div>
-        <span className={`badge ${balance >= 0 ? 'success' : 'danger'}`} style={{ fontSize: '11px', flexShrink: 0 }}>
+        <span className={`badge ${balance >= 0 ? 'success' : 'danger'}`} style={{ flexShrink: 0 }}>
           {balance >= 0 ? '+' : ''} ${balance.toLocaleString('es-AR')}
         </span>
       </div>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
-        <span style={{ padding: '3px 8px', borderRadius: '999px', fontSize: '11px', background: p.active ? 'var(--success)' : 'var(--danger)', color: 'white' }}>
-          {p.active ? 'Activo' : 'Inactivo'}
-        </span>
-        {status !== 'activo' && (
-          <span style={{ padding: '3px 8px', borderRadius: '999px', fontSize: '11px', background: statusBg, color: 'white' }}>
-            {STATUS_LABELS[status]}
-          </span>
-        )}
+      {/* Línea 2: estado + teléfono + finanzas ultra compactas */}
+      <div className="mobile-row-details">
+        <span className="mobile-row-tag">{p.active ? '✅' : '❌'} {p.active ? 'Activo' : 'Inactivo'}</span>
+        {status !== 'activo' && <span className={`mobile-row-tag mobile-row-tag-${status}`}>{STATUS_LABELS[status]}</span>}
+        <span className="mobile-row-stat">P: ${paid.toLocaleString('es-AR')}</span>
+        <span className="mobile-row-stat">R: ${required.toLocaleString('es-AR')}</span>
+        {p.phone && <span className="mobile-row-phone">📞{p.phone}</span>}
       </div>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: '8px',
-          marginBottom: '8px',
-          fontSize: '12px',
-        }}
-      >
-        <div>
-          <div style={{ color: 'var(--text-secondary)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Pagado</div>
-          <div style={{ color: 'var(--text)', fontWeight: 600 }}>${paid.toLocaleString('es-AR')}</div>
-        </div>
-        <div>
-          <div style={{ color: 'var(--text-secondary)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Requerido</div>
-          <div style={{ color: 'var(--text)', fontWeight: 600 }}>${required.toLocaleString('es-AR')}</div>
-        </div>
-        <div>
-          <div style={{ color: 'var(--text-secondary)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Saldo</div>
-          <div style={{ color: balance >= 0 ? 'var(--success)' : 'var(--danger)', fontWeight: 600 }}>
-            {balance >= 0 ? '+' : ''} ${balance.toLocaleString('es-AR')}
-          </div>
-        </div>
-      </div>
-
-      {(p.phone || p.notes) && (
-        <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-          {p.phone && <div>📞 {p.phone}</div>}
-          {p.notes && <div style={{ color: '#888', fontStyle: 'italic', marginTop: '4px' }}>📝 {p.notes}</div>}
-        </div>
-      )}
-
-      <div className="card-actions btn-group" style={{ marginTop: '4px' }}>
-        <button type="button" className="btn btn-secondary btn-sm" onClick={() => onEdit(p)}>
-          ✏️ Editar
+      {/* Línea 3: notas (si tiene) + acciones en fila */}
+      {p.notes && <div className="mobile-row-notes">📝 {p.notes}</div>}
+      <div className="mobile-row-actions">
+        <button className="mobile-row-action" onClick={() => onEdit(p)} title="Editar">✏️</button>
+        <button className="mobile-row-action" onClick={() => onHistory(p.id, p.name)} title="Historial">📋</button>
+        <button className="mobile-row-action" onClick={() => onToggle(p.id)} title={p.active ? 'Suspender' : 'Activar'}>
+          {p.active ? '⏸️' : '▶️'}
         </button>
-        <button type="button" className="btn btn-secondary btn-sm" onClick={() => onHistory(p.id, p.name)}>
-          📋 Historial
-        </button>
-        <button type="button" className="btn btn-secondary btn-sm" onClick={() => onToggle(p.id)}>
-          {p.active ? '❌ Desactivar' : '✅ Activar'}
-        </button>
-        <button type="button" className="btn btn-danger btn-sm" onClick={() => onRemove(p.id)}>
-          🗑️ Eliminar
-        </button>
+        <button className="mobile-row-action mobile-row-action-danger" onClick={() => onRemove(p.id)} title="Eliminar">🗑️</button>
       </div>
     </div>
   );
 }
+
 
 interface ParticipantsProps {
   participants: Participant[];
@@ -226,6 +177,7 @@ export default function Participants({
   const [searchInput, setSearchInput] = useState('');
   const [sortOption, setSortOption] = useState<'all_status' | 'active_status' | 'all_name_asc' | 'all_name_desc'>('all_status');
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  const [isMobile, setIsMobile] = useState(false);
   const [newName, setNewName] = useState('');
   const [newPhone, setNewPhone] = useState('');
   const [newNotes, setNewNotes] = useState('');
@@ -233,6 +185,16 @@ export default function Participants({
   const [joinDateLocal, setJoinDateLocal] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [showModal, setShowModal] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 640);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
+  // Force cards view on mobile
+  const effectiveView = isMobile ? 'cards' : viewMode;
 
   const openAdd = () => {
     setEditingId(null);
@@ -398,31 +360,33 @@ export default function Participants({
           </select>
         </div>
         <div className="participants-toolbar-actions">
-          <div className="participants-view-toggle" style={{ display: 'flex', gap: '6px', flex: '1 1 auto', minWidth: 0 }}>
-            <button
-              type="button"
-              className={viewMode === 'cards' ? 'btn btn-primary' : 'btn btn-secondary'}
-              onClick={() => setViewMode('cards')}
-              style={{ flex: 1, minWidth: 0 }}
-            >
-              🧩 Cards
-            </button>
-            <button
-              type="button"
-              className={viewMode === 'table' ? 'btn btn-primary' : 'btn btn-secondary'}
-              onClick={() => setViewMode('table')}
-              style={{ flex: 1, minWidth: 0 }}
-            >
-              📋 Tabla
-            </button>
-          </div>
+          {!isMobile && (
+            <div className="participants-view-toggle">
+              <button
+                type="button"
+                className={effectiveView === 'cards' ? 'btn btn-primary' : 'btn btn-secondary'}
+                onClick={() => setViewMode('cards')}
+                style={{ flex: 1, minWidth: 0 }}
+              >
+                🧩 Cards
+              </button>
+              <button
+                type="button"
+                className={effectiveView === 'table' ? 'btn btn-primary' : 'btn btn-secondary'}
+                onClick={() => setViewMode('table')}
+                style={{ flex: 1, minWidth: 0 }}
+              >
+                📋 Tabla
+              </button>
+            </div>
+          )}
           <button type="button" className="btn btn-primary participants-add-btn" onClick={openAdd}>
             ➕ Agregar Participante
           </button>
         </div>
       </div>
 
-      {viewMode === 'cards' ? (
+      {effectiveView === 'cards' ? (
         <div id="participantsList">
           {participantCards}
         </div>
