@@ -113,6 +113,9 @@ export function useTeamData(
 
   const getObjectiveForMonth = useCallback(
     (month: string): number => {
+      if (month === currentMonth) {
+        return monthlyObjective;
+      }
       const exact = monthlyConfigsSorted.find(cfg => cfg.month === month);
       if (exact) return (exact.monthlyTarget || 0) + (exact.rent || 0) + (exact.includedExpenses || 0);
       const previous = monthlyConfigsSorted.filter(cfg => cfg.month < month);
@@ -122,7 +125,7 @@ export function useTeamData(
       }
       return monthlyObjective;
     },
-    [monthlyConfigsSorted, monthlyObjective]
+    [monthlyConfigsSorted, monthlyObjective, currentMonth]
   );
 
   /** Objetivo base + alquiler del mes (sin gastos incluidos en cuota), mismo criterio que `computeMonthlySummary.baseObjective`. */
