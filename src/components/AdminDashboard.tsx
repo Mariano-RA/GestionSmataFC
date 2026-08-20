@@ -472,7 +472,7 @@ export default function AdminDashboard() {
                       🧾 Auditoría de deuda por alta (joinDate)
                     </h3>
                     <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '12px' }}>
-                      Detecta jugadores/meses donde debería ser cuota 0 por fecha de alta (corte: primer sábado 00:00) y faltan snapshots para congelarlo.
+                      Detecta jugadores/meses donde debería ser cuota 0 por fecha de alta (meses anteriores al mes local de joinDate) y faltan snapshots o quedaron active=true.
                     </p>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px', marginBottom: '12px' }}>
                       <div className="form-group" style={{ margin: 0 }}>
@@ -561,7 +561,7 @@ export default function AdminDashboard() {
                               📅 Corregir fecha de alta (todos los jugadores del equipo)
                             </h4>
                             <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '10px' }}>
-                              Ajustá la fecha/hora para que coincida con cuándo debe aplicarse la regla del primer sábado del mes de alta. Requiere permiso de edición en ese equipo (y estar asignado al mismo).
+                              Ajustá la fecha/hora de alta: la cuota empieza en ese mes (calendario local). Requiere permiso de edición en ese equipo (y estar asignado al mismo).
                             </p>
                             <div
                               style={{

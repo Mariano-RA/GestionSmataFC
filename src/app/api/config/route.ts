@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
       }
       const teamParticipants = await db.participant.findMany({
         where: { teamId: parsedTeamId },
-        select: { id: true, active: true, status: true },
+        select: { id: true, active: true, status: true, joinDate: true },
       });
 
       const config = await runMonthlyClose(db, {

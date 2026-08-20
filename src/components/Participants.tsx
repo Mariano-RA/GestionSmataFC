@@ -202,7 +202,7 @@ export default function Participants({
     setNewPhone('');
     setNewNotes('');
     setNewStatus('activo');
-    setJoinDateLocal('');
+    setJoinDateLocal(isoInstantToDatetimeLocalValue(new Date().toISOString()));
     setShowModal(true);
   };
 
@@ -526,18 +526,16 @@ export default function Participants({
             />
           </div>
           <div className="form-group">
-            <label>Fecha de alta {editingId === null ? '(opcional)' : ''}</label>
+            <label>Fecha de alta</label>
             <input
               type="datetime-local"
               value={joinDateLocal}
               onChange={e => setJoinDateLocal(e.target.value)}
               style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text)' }}
             />
-            {editingId === null && (
-              <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '6px' }}>
-                Si no cargás nada, se usa la fecha y hora actual. Afecta la cuota del mes de alta (regla del primer sábado).
-              </p>
-            )}
+            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '6px' }}>
+              La cuota se cuenta desde el mes de esta fecha; los meses anteriores no generan deuda.
+            </p>
           </div>
           <button className="btn btn-success" onClick={editingId === null ? handleAdd : handleSave}>
             {editingId === null ? '✅ Agregar' : '💾 Guardar Cambios'}

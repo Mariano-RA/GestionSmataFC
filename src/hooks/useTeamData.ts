@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { logger } from '@/lib/logger';
-import { DEFAULT_CONFIG, getFirstSaturdayStartLocal } from '@/lib/utils';
+import { DEFAULT_CONFIG } from '@/lib/utils';
+import { shouldChargeForMonth } from '@/lib/domain/joinDate';
 import type { Participant, ParticipantMonthlyStatus, ParticipantStatus } from '@/types';
 import type { RequestFn } from '@/services/types';
 import { useParticipants } from '@/hooks/useParticipants';
@@ -172,19 +173,12 @@ export function useTeamData(
 
   const getRequiredAmountForMonth = useCallback(
     (p: Participant, month: string): number => {
+      // joinDate manda sobre snapshots: meses previos al alta nunca generan cuota.
+      if (p.joinDate && !shouldChargeForMonth(p.joinDate, month)) return 0;
+
       const monthSnapshot = participantMonthlyStatuses.find(
         (s) => s.participantId === p.id && s.month === month
       );
-      const joinMonth = p.joinDate?.slice(0, 7);
-      if (!monthSnapshot && joinMonth) {
-        if (month < joinMonth) return 0;
-        if (month === joinMonth) {
-          const joinAt = new Date(p.joinDate);
-          const cutoff = getFirstSaturdayStartLocal(month);
-          if (joinAt.getTime() >= cutoff.getTime()) return 0;
-        }
-      }
-
       const isActiveForMonth = monthSnapshot?.active ?? p.active;
       const statusForMonth = monthSnapshot?.status ?? p.status;
       if (!isActiveForMonth) return 0;

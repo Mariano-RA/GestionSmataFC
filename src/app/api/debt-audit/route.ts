@@ -5,7 +5,8 @@ import { z } from 'zod';
 import { db } from '@/lib/db';
 import { validateProtectedTeamRouteWithMethod } from '@/lib/auth';
 import { ApiResponse } from '@/lib/api-response';
-import { getFirstSaturdayStartLocal, addMonths } from '@/lib/utils';
+import { addMonths, formatLocalYearMonth } from '@/lib/utils';
+import { getJoinMonthLocal, shouldChargeForMonth } from '@/lib/domain/joinDate';
 
 const QuerySchema = z.object({
   teamId: z.coerce.number().int().positive(),
@@ -30,18 +31,14 @@ function listMonths(fromMonth: string, toMonth: string): string[] {
   return out;
 }
 
-function shouldZeroRequiredByJoinRule(participantJoinDate: string, month: string): boolean {
-  const joinMonth = participantJoinDate.slice(0, 7);
-  if (month < joinMonth) return true;
-  if (month > joinMonth) return false;
-  const joinAt = new Date(participantJoinDate);
-  const cutoff = getFirstSaturdayStartLocal(month);
-  return joinAt.getTime() >= cutoff.getTime();
+/** Meses previos al mes de alta (cuota 0). */
+function shouldZeroRequiredByJoinRule(participantJoinDate: string | Date, month: string): boolean {
+  return !shouldChargeForMonth(participantJoinDate, month);
 }
 
 /**
  * GET /api/debt-audit?teamId=1&fromMonth=YYYY-MM&toMonth=YYYY-MM
- * Lista meses que deberían tener required=0 por regla de alta (joinDate + primer sábado 00:00)
+ * Lista meses que deberían tener required=0 por regla de alta (mes local de joinDate)
  * y detecta snapshots faltantes o inconsistentes.
  */
 export async function GET(request: NextRequest) {
@@ -72,12 +69,12 @@ export async function GET(request: NextRequest) {
   const minMonth =
     fromMonth ??
     participants.reduce<string | null>((min, p) => {
-      const m = p.joinDate.toISOString().slice(0, 7);
+      const m = getJoinMonthLocal(p.joinDate);
       if (min == null) return m;
       return m < min ? m : min;
     }, null) ??
-    new Date().toISOString().slice(0, 7);
-  const maxMonth = toMonth ?? new Date().toISOString().slice(0, 7);
+    formatLocalYearMonth();
+  const maxMonth = toMonth ?? formatLocalYearMonth();
 
   const months = listMonths(minMonth, maxMonth);
   const statusMap = new Map<string, { active: boolean; status: string | null }>();
@@ -86,8 +83,8 @@ export async function GET(request: NextRequest) {
   }
 
   const rows = participants.map((p) => {
-    const joinMonth = p.joinDate.toISOString().slice(0, 7);
-    const zeroMonths = months.filter((m) => shouldZeroRequiredByJoinRule(p.joinDate.toISOString(), m));
+    const joinMonth = getJoinMonthLocal(p.joinDate);
+    const zeroMonths = months.filter((m) => shouldZeroRequiredByJoinRule(p.joinDate, m));
     const missingSnapshots = zeroMonths.filter((m) => !statusMap.has(`${p.id}:${m}`));
     const inconsistentSnapshots = zeroMonths
       .map((m) => {
@@ -148,25 +145,24 @@ export async function POST(request: NextRequest) {
   ]);
 
   const existing = new Set(monthlyStatuses.map((s) => `${s.participantId}:${s.month}`));
-  const joinDateByParticipantId = new Map<number, string>(
-    participants.map((p) => [p.id, p.joinDate.toISOString()])
+  const joinDateByParticipantId = new Map<number, Date>(
+    participants.map((p) => [p.id, p.joinDate])
   );
   const minMonth =
     fromMonth ??
     participants.reduce<string | null>((min, p) => {
-      const m = p.joinDate.toISOString().slice(0, 7);
+      const m = getJoinMonthLocal(p.joinDate);
       if (min == null) return m;
       return m < min ? m : min;
     }, null) ??
-    new Date().toISOString().slice(0, 7);
-  const maxMonth = toMonth ?? new Date().toISOString().slice(0, 7);
+    formatLocalYearMonth();
+  const maxMonth = toMonth ?? formatLocalYearMonth();
   const months = listMonths(minMonth, maxMonth);
 
   const toCreate: { teamId: number; participantId: number; month: string; active: boolean; status: string }[] = [];
   for (const p of participants) {
-    const joinIso = p.joinDate.toISOString();
     for (const m of months) {
-      if (!shouldZeroRequiredByJoinRule(joinIso, m)) continue;
+      if (!shouldZeroRequiredByJoinRule(p.joinDate, m)) continue;
       const key = `${p.id}:${m}`;
       if (existing.has(key)) continue;
       toCreate.push({ teamId, participantId: p.id, month: m, active: false, status: 'activo' });
@@ -186,9 +182,9 @@ export async function POST(request: NextRequest) {
     for (const s of monthlyStatuses) {
       if (s.active === false) continue;
       if (!months.includes(s.month)) continue;
-      const joinIso = joinDateByParticipantId.get(s.participantId);
-      if (!joinIso) continue;
-      if (!shouldZeroRequiredByJoinRule(joinIso, s.month)) continue;
+      const joinDate = joinDateByParticipantId.get(s.participantId);
+      if (!joinDate) continue;
+      if (!shouldZeroRequiredByJoinRule(joinDate, s.month)) continue;
       idsToDisable.push(s.id);
     }
     if (idsToDisable.length) {
@@ -202,4 +198,3 @@ export async function POST(request: NextRequest) {
 
   return ApiResponse.ok({ created: created.count, updated });
 }
-

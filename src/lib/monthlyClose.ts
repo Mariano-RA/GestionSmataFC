@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import { DEFAULT_CONFIG } from '@/lib/utils';
+import { shouldChargeForMonth } from '@/lib/domain/joinDate';
 import { createAuditLog } from '@/lib/audit';
 
 export type MonthlyCloseNumbers = {
@@ -11,11 +12,17 @@ export type MonthlyCloseNumbers = {
   monthlyShare?: number;
 };
 
-type TeamParticipantRow = { id: number; active: boolean; status: string | null };
+export type TeamParticipantRow = {
+  id: number;
+  active: boolean;
+  status: string | null;
+  joinDate: Date;
+};
 
 /**
  * Cierra un mes como POST /api/config?month=…: upsert MonthlyConfig + snapshots por jugador.
  * Misma lógica que el handler de config (valores ya validados o calculados).
+ * Jugadores con joinDate posterior al mes quedan con snapshot active=false y no entran en efectivos.
  */
 export async function runMonthlyClose(
   prisma: PrismaClient,
@@ -29,16 +36,12 @@ export async function runMonthlyClose(
   }
 ) {
   const { teamId, month, userId, ip, numbers, teamParticipants } = params;
-  const {
-    monthlyTarget,
-    rent,
-    includedExpenses,
-    activeParticipants,
-    effectiveParticipants,
-    monthlyShare,
-  } = numbers;
+  const { monthlyTarget, rent, includedExpenses } = numbers;
 
-  const activeTeamParticipants = teamParticipants.filter((p) => p.active);
+  const chargeableParticipants = teamParticipants.filter((p) =>
+    shouldChargeForMonth(p.joinDate, month)
+  );
+  const activeTeamParticipants = chargeableParticipants.filter((p) => p.active);
   const computedActiveParticipants = activeTeamParticipants.length;
   const computedEffectiveParticipants =
     activeTeamParticipants.reduce(
@@ -53,13 +56,13 @@ export async function runMonthlyClose(
               : 1),
       0
     ) || 1;
-  const snapshotActiveParticipants = activeParticipants ?? computedActiveParticipants;
-  const snapshotEffectiveParticipants = effectiveParticipants ?? computedEffectiveParticipants;
+  // Siempre calcular desde jugadores chargeables por joinDate (no inflar meses pasados).
+  const snapshotActiveParticipants = computedActiveParticipants;
+  const snapshotEffectiveParticipants = computedEffectiveParticipants;
   const snapshotIncludedExpenses = includedExpenses ?? 0;
   const snapshotMonthlyShare =
-    monthlyShare ??
     (monthlyTarget + rent + snapshotIncludedExpenses) /
-      (snapshotEffectiveParticipants > 0 ? snapshotEffectiveParticipants : 1);
+    (snapshotEffectiveParticipants > 0 ? snapshotEffectiveParticipants : 1);
 
   return prisma.$transaction(async (tx) => {
     const upserted = await tx.monthlyConfig.upsert({
@@ -84,8 +87,11 @@ export async function runMonthlyClose(
       },
     });
     await Promise.all(
-      teamParticipants.map((participant) =>
-        tx.participantMonthlyStatus.upsert({
+      teamParticipants.map((participant) => {
+        const chargesThisMonth = shouldChargeForMonth(participant.joinDate, month);
+        const snapshotActive = chargesThisMonth ? participant.active : false;
+        const snapshotStatus = participant.status || 'activo';
+        return tx.participantMonthlyStatus.upsert({
           where: {
             participantId_month: {
               participantId: participant.id,
@@ -93,19 +99,19 @@ export async function runMonthlyClose(
             },
           },
           update: {
-            active: participant.active,
-            status: participant.status || 'activo',
+            active: snapshotActive,
+            status: snapshotStatus,
             teamId,
           },
           create: {
             teamId,
             participantId: participant.id,
             month,
-            active: participant.active,
-            status: participant.status || 'activo',
+            active: snapshotActive,
+            status: snapshotStatus,
           },
-        })
-      )
+        });
+      })
     );
     await createAuditLog(
       {
@@ -162,7 +168,7 @@ export async function closeMonthFromDatabaseState(
 ) {
   const teamParticipants = await prisma.participant.findMany({
     where: { teamId },
-    select: { id: true, active: true, status: true },
+    select: { id: true, active: true, status: true, joinDate: true },
   });
   const { monthlyTarget, rent } = await loadGlobalTeamTargetAndRent(prisma, teamId);
   const expenses = await prisma.expense.findMany({
