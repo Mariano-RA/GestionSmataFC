@@ -62,17 +62,18 @@ function formatPaidStatusLine(p: WhatsAppStatusParticipant): string {
 }
 
 /**
- * Línea de faltante para completar el mes: al día → ✅; con deuda → nombre + monto faltante.
+ * Línea de faltante para completar el mes (solo deudores / sin trabajo).
+ * Devuelve null si el participante ya completó la cuota.
  */
-function formatRemainingToCompleteLine(p: WhatsAppStatusParticipant): string {
+function formatRemainingToCompleteLine(p: WhatsAppStatusParticipant): string | null {
   const name = normalizeName(p.name);
   if ((p.status as ParticipantStatus) === 'sin_laburo') {
     return `${name} (sin trabajo)`;
   }
-  if (p.required > 0) {
-    return p.debt <= 0 ? `${name} ✅` : `${name}: ${formatCurrency(p.debt)}`;
+  if (p.required > 0 && p.debt > 0) {
+    return `${name}: ${formatCurrency(p.debt)}`;
   }
-  return name;
+  return null;
 }
 
 /**
@@ -89,13 +90,17 @@ export function buildGroupPaidStatusMessage(
 
 /**
  * Mensaje grupal con lo que falta a cada uno para completar el mes.
+ * Omite a quienes ya están al día.
  */
 export function buildGroupRemainingToCompleteMessage(
   participants: WhatsAppStatusParticipant[],
   currentMonth: string,
   monthlyShare: number
 ): string {
-  const listado = participants.map(formatRemainingToCompleteLine).join('\n');
+  const listado = participants
+    .map(formatRemainingToCompleteLine)
+    .filter((line): line is string => line != null)
+    .join('\n');
   return `${buildMonthHeader(currentMonth, monthlyShare)}\n${listado}`;
 }
 
