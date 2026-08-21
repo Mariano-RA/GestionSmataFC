@@ -1,4 +1,14 @@
 import { formatCurrency, getMonthName, normalizeName } from '@/lib/utils';
+import type { ParticipantStatus } from '@/types';
+
+/** Datos mínimos para armar el listado grupal de WhatsApp. */
+export interface WhatsAppStatusParticipant {
+  name: string;
+  status?: ParticipantStatus | string | null;
+  paid: number;
+  required: number;
+  debt: number;
+}
 
 /**
  * Normaliza un teléfono al formato E.164 para WhatsApp (Argentina).
@@ -31,6 +41,62 @@ export function buildDebtReminderMessage(
   }
   message += ' ¡Gracias!';
   return message;
+}
+
+function buildMonthHeader(currentMonth: string, monthlyShare: number): string {
+  return `Mes: ${getMonthName(currentMonth)} - Cuota: ${formatCurrency(monthlyShare)}`;
+}
+
+/**
+ * Línea de estado (lo pagado): sin pago → solo nombre; con pago → nombre + monto.
+ */
+function formatPaidStatusLine(p: WhatsAppStatusParticipant): string {
+  const name = normalizeName(p.name);
+  if ((p.status as ParticipantStatus) === 'sin_laburo') {
+    return `${name} (sin trabajo)`;
+  }
+  if (p.required > 0) {
+    return p.paid === 0 ? name : `${name}: ${formatCurrency(p.paid)}`;
+  }
+  return name;
+}
+
+/**
+ * Línea de faltante para completar el mes: al día → ✅; con deuda → nombre + monto faltante.
+ */
+function formatRemainingToCompleteLine(p: WhatsAppStatusParticipant): string {
+  const name = normalizeName(p.name);
+  if ((p.status as ParticipantStatus) === 'sin_laburo') {
+    return `${name} (sin trabajo)`;
+  }
+  if (p.required > 0) {
+    return p.debt <= 0 ? `${name} ✅` : `${name}: ${formatCurrency(p.debt)}`;
+  }
+  return name;
+}
+
+/**
+ * Mensaje grupal con lo pagado por cada participante (botón "Copiar Estado").
+ */
+export function buildGroupPaidStatusMessage(
+  participants: WhatsAppStatusParticipant[],
+  currentMonth: string,
+  monthlyShare: number
+): string {
+  const listado = participants.map(formatPaidStatusLine).join('\n');
+  return `${buildMonthHeader(currentMonth, monthlyShare)}\n${listado}`;
+}
+
+/**
+ * Mensaje grupal con lo que falta a cada uno para completar el mes.
+ */
+export function buildGroupRemainingToCompleteMessage(
+  participants: WhatsAppStatusParticipant[],
+  currentMonth: string,
+  monthlyShare: number
+): string {
+  const listado = participants.map(formatRemainingToCompleteLine).join('\n');
+  return `${buildMonthHeader(currentMonth, monthlyShare)}\n${listado}`;
 }
 
 /**

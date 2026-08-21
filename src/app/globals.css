@@ -2086,6 +2086,13 @@ select:focus {
   font-weight: 700;
 }
 
+.debtors-copy-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
 .debtors-copy-btn {
   width: 100%;
   padding: 12px;
@@ -2096,7 +2103,6 @@ select:focus {
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  margin-bottom: 14px;
   transition: background var(--transition-fast);
   text-align: center;
 }

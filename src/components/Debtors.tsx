@@ -4,11 +4,15 @@ import { useState } from 'react';
 import {
   formatCurrency,
   formatMonthShortLabel,
-  getMonthName,
   normalizeName,
   parseYMDToLocalDate,
 } from '@/lib/utils';
-import { buildDebtReminderMessage, openWhatsAppForDebtor as openWhatsApp } from '@/lib/utils/whatsapp';
+import {
+  buildDebtReminderMessage,
+  buildGroupPaidStatusMessage,
+  buildGroupRemainingToCompleteMessage,
+  openWhatsAppForDebtor as openWhatsApp,
+} from '@/lib/utils/whatsapp';
 import {
   buildDebtMatrixMonths,
   computeParticipantDebtMatrixRow,
@@ -134,30 +138,40 @@ export default function Debtors({
         </button>
       </div>
 
-      {/* Copy to clipboard button */}
+      {/* Copy to clipboard buttons */}
       {viewMode === 'list' && participants.length > 0 && (
-        <button
-          className="debtors-copy-btn"
-          onClick={() => {
-            const header = `Mes: ${getMonthName(currentMonth)} - Cuota: ${formatCurrency(monthlyShare)}`;
-            const listado = allParticipantsStatus
-              .map(p => {
-                if ((p.status as ParticipantStatus) === 'sin_laburo') {
-                  return `${normalizeName(p.name)} (sin trabajo)`;
-                }
-                if (p.required > 0) {
-                  return p.paid === 0 ? normalizeName(p.name) : `${normalizeName(p.name)}: ${formatCurrency(p.paid)}`;
-                }
-                return normalizeName(p.name);
-              })
-              .join('\n');
-            const msg = `${header}\n${listado}`;
-            navigator.clipboard.writeText(msg);
-            addToast('Mensaje copiado al portapapeles', 'success');
-          }}
-        >
-          📋 Copiar Estado para WhatsApp
-        </button>
+        <div className="debtors-copy-btns">
+          <button
+            type="button"
+            className="debtors-copy-btn"
+            onClick={() => {
+              const msg = buildGroupPaidStatusMessage(
+                allParticipantsStatus,
+                currentMonth,
+                monthlyShare
+              );
+              navigator.clipboard.writeText(msg);
+              addToast('Estado copiado al portapapeles', 'success');
+            }}
+          >
+            📋 Copiar Estado para WhatsApp
+          </button>
+          <button
+            type="button"
+            className="debtors-copy-btn"
+            onClick={() => {
+              const msg = buildGroupRemainingToCompleteMessage(
+                allParticipantsStatus,
+                currentMonth,
+                monthlyShare
+              );
+              navigator.clipboard.writeText(msg);
+              addToast('Faltantes copiados al portapapeles', 'success');
+            }}
+          >
+            💰 Copiar Faltante para Completar
+          </button>
+        </div>
       )}
 
       {viewMode === 'matrix' && (
