@@ -70,6 +70,8 @@ export interface ParticipantMonthlyStatus {
   month: string;
   active: boolean;
   status?: ParticipantStatus | null;
+  /** Deuda del mes condonada al cerrar: no cuenta como pago, pero el mes deja de generar deuda. */
+  debtWaived?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -139,4 +141,12 @@ export interface ParticipantStats {
   required: number;
   balance: number;
   debt: number;
+}
+
+/** Cierre de campeonato junto con el último mes (POST /api/config?month=… → `seasonClose`). */
+export interface SeasonClose {
+  /** Meses (YYYY-MM) cuya deuda se condona por jugador. */
+  waiveDebt: { participantId: number; months: string[] }[];
+  /** Jugadores que no siguen en el próximo campeonato (se deshabilitan). */
+  deactivateParticipantIds: number[];
 }

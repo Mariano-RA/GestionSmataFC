@@ -161,9 +161,42 @@ export const monthlyConfigSchema = z.object({
   activeParticipants: z.coerce.number().int().positive().optional(),
   effectiveParticipants: z.coerce.number().positive().optional(),
   monthlyShare: z.coerce.number().nonnegative().optional(),
+  /** Jugadores a los que se les condona la deuda del mes al cerrarlo (no cuenta como pago). */
+  waivedParticipantIds: z.array(z.coerce.number().int().positive()).max(500).optional(),
+  /** Cierre de campeonato (último mes): condonar deuda acumulada y deshabilitar a los que no siguen. */
+  seasonClose: z
+    .object({
+      waiveDebt: z
+        .array(
+          z.object({
+            participantId: z.coerce.number().int().positive(),
+            months: z.array(z.string().regex(/^\d{4}-\d{2}$/, 'Mes debe ser YYYY-MM')).min(1).max(120),
+          })
+        )
+        .max(500),
+      deactivateParticipantIds: z.array(z.coerce.number().int().positive()).max(500),
+    })
+    .optional(),
 });
 
 export type MonthlyConfigRequest = z.infer<typeof monthlyConfigSchema>;
+
+/** PUT /api/participant-monthly-status — fija el estado de jugadores para un mes abierto */
+export const setParticipantMonthlyStatusesSchema = z.object({
+  teamId: z.coerce.number().int().positive('Team ID requerido'),
+  month: z.string().regex(/^\d{4}-\d{2}$/, 'Mes debe ser YYYY-MM'),
+  statuses: z
+    .array(
+      z.object({
+        participantId: z.coerce.number().int().positive('Participante requerido'),
+        status: z.enum(['activo', 'sin_laburo', 'lesionado', 'media_cuota']),
+      })
+    )
+    .min(1, 'Al menos un jugador')
+    .max(500),
+});
+
+export type SetParticipantMonthlyStatusesRequest = z.infer<typeof setParticipantMonthlyStatusesSchema>;
 
 export type UpdatePaymentRequest = z.infer<typeof updatePaymentSchema>;
 

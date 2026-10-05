@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { isoInstantToDatetimeLocalValue, normalizeName } from '@/lib/utils';
+import { getMonthName, isoInstantToDatetimeLocalValue, normalizeName } from '@/lib/utils';
 import type { Participant, Payment, ParticipantStatus } from '@/types';
 
 const STATUS_LABELS: Record<ParticipantStatus, string> = {
@@ -155,6 +155,8 @@ interface ParticipantsProps {
   participants: Participant[];
   payments: Payment[];
   currentMonth: string;
+  /** Mes seleccionado cerrado: el estado del jugador no se puede cambiar para ese mes. */
+  monthClosed?: boolean;
   getRequiredAmount: (p: Participant) => number;
   onAdd: (name: string, phone: string, notes: string, status?: ParticipantStatus, joinDateIso?: string) => void;
   onUpdate: (id: number, name: string, phone: string, notes: string, status?: ParticipantStatus | null, joinDateIso?: string) => void;
@@ -167,6 +169,7 @@ export default function Participants({
   participants,
   payments,
   currentMonth,
+  monthClosed = false,
   getRequiredAmount,
   onAdd,
   onUpdate,
@@ -506,16 +509,24 @@ export default function Participants({
             />
           </div>
           <div className="form-group">
-            <label>Estado</label>
+            <label>{editingId === null ? 'Estado' : `Estado en ${getMonthName(currentMonth)}`}</label>
             <select
               value={newStatus}
               onChange={e => setNewStatus(e.target.value as ParticipantStatus)}
+              disabled={editingId !== null && monthClosed}
               style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text)', width: '100%' }}
             >
               {(Object.keys(STATUS_LABELS) as ParticipantStatus[]).map(s => (
                 <option key={s} value={s}>{STATUS_LABELS[s]}</option>
               ))}
             </select>
+            {editingId !== null && (
+              <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '6px' }}>
+                {monthClosed
+                  ? 'El mes está cerrado: el estado de ese mes no se puede cambiar.'
+                  : 'El estado se guarda para este mes y se mantiene en los siguientes hasta que lo cambies.'}
+              </p>
+            )}
           </div>
           <div className="form-group">
             <label>Notas (opcional)</label>

@@ -5,7 +5,7 @@ import { useTeamDataContext } from '@/context/TeamDataContext';
 import HistoryModal from '@/components/HistoryModal';
 import { computeMonthlyHistory } from '@/lib/domain/history';
 import { parseYMDToLocalDate } from '@/lib/utils';
-import type { ParticipantMonthlyStatus, ParticipantStatus } from '@/types';
+import type { ParticipantStatus } from '@/types';
 
 interface HistoryModalContainerProps {
   isOpen: boolean;
@@ -32,14 +32,11 @@ export default function HistoryModalContainer({
       a.month.localeCompare(b.month)
     );
 
-    const statusForMonth = (month: string): { active: boolean; status: ParticipantStatus | null } => {
-      if (!participant) return { active: false, status: null };
-      const snap: ParticipantMonthlyStatus | undefined = data.participantMonthlyStatuses.find(
-        (s) => s.participantId === participant.id && s.month === month
-      );
-      const active = snap?.active ?? participant.active;
-      const status = (snap?.status ?? participant.status ?? null) as ParticipantStatus | null;
-      return { active, status };
+    const statusForMonth = (
+      month: string
+    ): { active: boolean; status: ParticipantStatus | null; debtWaived: boolean } => {
+      if (!participant) return { active: false, status: null, debtWaived: false };
+      return data.getMonthlyState(participant, month);
     };
 
     const objectiveForMonth = (month: string): number => {
@@ -77,7 +74,7 @@ export default function HistoryModalContainer({
 
     const monthlyDetails = Object.fromEntries(
       historyMonths.map((month) => {
-        const { active, status } = statusForMonth(month);
+        const { active, status, debtWaived } = statusForMonth(month);
         const objective = objectiveForMonth(month);
         const effectiveParticipants = effectiveParticipantsForMonth(month);
         const share = effectiveParticipants > 0 ? objective / effectiveParticipants : 0;
@@ -86,6 +83,7 @@ export default function HistoryModalContainer({
           {
             active,
             status,
+            debtWaived,
             objective,
             effectiveParticipants,
             share,
@@ -99,7 +97,7 @@ export default function HistoryModalContainer({
     data.payments,
     data.participants,
     data.monthlyConfigs,
-    data.participantMonthlyStatuses,
+    data.getMonthlyState,
     data.currentMonth,
     data.getRequiredAmountForMonth,
     data.config.monthlyTarget,

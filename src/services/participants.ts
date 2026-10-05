@@ -1,5 +1,5 @@
 import type { RequestFn } from './types';
-import type { Participant } from '@/types';
+import type { Participant, ParticipantMonthlyStatus, ParticipantStatus } from '@/types';
 
 export async function getParticipants(request: RequestFn): Promise<Participant[] | null> {
   const data = await request<Participant[]>('/api/participants');
@@ -38,4 +38,15 @@ export async function updateParticipant(
 
 export async function deleteParticipant(request: RequestFn, id: number): Promise<unknown> {
   return request<unknown>(`/api/participants/${id}`, { method: 'DELETE' });
+}
+
+export async function setMonthlyStatuses(
+  request: RequestFn,
+  month: string,
+  statuses: { participantId: number; status: ParticipantStatus }[]
+): Promise<ParticipantMonthlyStatus[] | null> {
+  return request<ParticipantMonthlyStatus[]>('/api/participant-monthly-status', {
+    method: 'PUT',
+    body: { month, statuses },
+  });
 }

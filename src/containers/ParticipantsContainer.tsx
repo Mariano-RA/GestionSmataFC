@@ -14,6 +14,7 @@ export default function ParticipantsContainer({ onShowHistory }: ParticipantsCon
       participants={data.participants}
       payments={data.payments}
       currentMonth={data.currentMonth}
+      monthClosed={data.isMonthClosed(data.currentMonth)}
       getRequiredAmount={data.getRequiredAmount}
       onAdd={data.handleAddParticipant}
       onUpdate={data.handleUpdateParticipant}

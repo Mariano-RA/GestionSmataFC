@@ -19,6 +19,7 @@ interface MonthlyHistoryItem {
 interface MonthlyDetails {
   active: boolean;
   status: ParticipantStatus | null;
+  debtWaived?: boolean;
   objective: number;
   effectiveParticipants: number;
   share: number;
@@ -99,6 +100,14 @@ export default function HistoryModal({
                           style={{ color: item.debtMonth > 0 ? 'var(--danger)' : 'var(--success)' }}
                         >
                           {formatCurrency(item.debtMonth)}
+                          {d?.debtWaived && (
+                            <div
+                              style={{ fontSize: '11px', fontWeight: 500, color: 'var(--text-secondary)' }}
+                              title="Deuda del mes condonada al cerrar (no cuenta como pago)"
+                            >
+                              Condonada
+                            </div>
+                          )}
                         </td>
                         <td
                           className="history-modal-table__num history-modal-table__emph hide-mobile"

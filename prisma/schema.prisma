@@ -112,6 +112,7 @@ model ParticipantMonthlyStatus {
   month          String   // YYYY-MM
   active         Boolean
   status         String?  @default("activo") // activo | sin_laburo | lesionado | media_cuota
+  debtWaived     Boolean  @default(false) // deuda del mes condonada al cerrar (no cuenta como pago)
   team           Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   participant    Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
   createdAt      DateTime @default(now())

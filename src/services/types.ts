@@ -4,5 +4,5 @@
  */
 export type RequestFn = <T>(
   endpoint: string,
-  options?: { method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'; body?: Record<string, unknown>; disableAutoParams?: boolean }
+  options?: { method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE'; body?: Record<string, unknown>; disableAutoParams?: boolean }
 ) => Promise<T | null>;

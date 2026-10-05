@@ -3,6 +3,7 @@ import {
   buildDebtMatrixMonths,
   computeParticipantDebtMatrixRow,
   computeParticipantsWithDebtStatus,
+  computeOutstandingDebtByMonth,
   filterDebtorsByType,
   type ParticipantWithDebtStatus,
 } from './debt';
@@ -153,5 +154,40 @@ describe('computeParticipantDebtMatrixRow', () => {
     expect(mar?.paid).toBe(400);
     expect(mar?.required).toBe(1000);
     expect(mar?.debtMonth).toBe(600);
+  });
+});
+
+describe('computeOutstandingDebtByMonth', () => {
+  const required = () => 1000;
+
+  it('lista solo los meses con faltante hasta el mes indicado', () => {
+    const payments = [
+      payment({ id: 1, date: '2024-01-10', amount: 1000 }),
+      payment({ id: 2, date: '2024-02-10', amount: 400 }),
+      payment({ id: 3, date: '2024-05-10', amount: 1000 }),
+    ];
+    const rows = computeOutstandingDebtByMonth(
+      participant(),
+      payments,
+      '2024-03',
+      ['2024-01', '2024-02', '2024-03'],
+      required
+    );
+    expect(rows).toEqual([
+      { month: '2024-02', debt: 600 },
+      { month: '2024-03', debt: 1000 },
+    ]);
+  });
+
+  it('usa el mes imputado del pago', () => {
+    const payments = [payment({ date: '2024-04-01', appliedMonth: '2024-03', amount: 1000 })];
+    const rows = computeOutstandingDebtByMonth(participant(), payments, '2024-03', ['2024-03'], required);
+    expect(rows).toEqual([]);
+  });
+
+  it('ignora pagos de otros jugadores', () => {
+    const payments = [payment({ participantId: 2, date: '2024-03-01', amount: 1000 })];
+    const rows = computeOutstandingDebtByMonth(participant(), payments, '2024-03', ['2024-03'], required);
+    expect(rows).toEqual([{ month: '2024-03', debt: 1000 }]);
   });
 });

@@ -124,13 +124,16 @@ export async function POST(request: NextRequest) {
         select: { id: true, active: true, status: true, joinDate: true },
       });
 
+      const { waivedParticipantIds, seasonClose, ...numbers } = validation.data;
       const config = await runMonthlyClose(db, {
         teamId: parsedTeamId,
         month,
         userId,
         ip,
-        numbers: validation.data,
+        numbers,
         teamParticipants,
+        waivedParticipantIds,
+        seasonClose,
       });
 
       return ApiResponse.created(config);

@@ -81,6 +81,33 @@ export function computeParticipantsWithDebtStatus(
     .sort((a, b) => b.debt - a.debt);
 }
 
+/**
+ * Meses con deuda pendiente de un jugador hasta `upToMonth` inclusive.
+ * Mismos meses y criterio que `totalDebt` en `computeParticipantsWithDebtStatus`
+ * (meses con pagos + `historyMonths` + `upToMonth`; faltante por mes sin compensar entre meses).
+ */
+export function computeOutstandingDebtByMonth(
+  participant: Participant,
+  payments: Payment[],
+  upToMonth: string,
+  historyMonths: string[],
+  getRequiredAmountForMonth: (p: Participant, month: string) => number
+): { month: string; debt: number }[] {
+  const getPayMonth = (pay: Payment) => pay.appliedMonth ?? pay.date.slice(0, 7);
+  const participantPayments = payments.filter((pay) => pay.participantId === participant.id);
+  const months = new Set([...participantPayments.map(getPayMonth), ...historyMonths, upToMonth]);
+  return Array.from(months)
+    .filter((month) => month <= upToMonth)
+    .sort()
+    .map((month) => {
+      const paid = participantPayments
+        .filter((pay) => getPayMonth(pay) === month)
+        .reduce((sum, pay) => sum + pay.amount, 0);
+      return { month, debt: Math.max(0, getRequiredAmountForMonth(participant, month) - paid) };
+    })
+    .filter((row) => row.debt > 0);
+}
+
 export type DebtFilterType = 'all' | 'high' | 'medium' | 'completed';
 
 /** Cinco meses consecutivos: cuatro anteriores al mes de trabajo del equipo + el mes actual. */

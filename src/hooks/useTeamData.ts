@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { logger } from '@/lib/logger';
-import { DEFAULT_CONFIG } from '@/lib/utils';
 import { shouldChargeForMonth } from '@/lib/domain/joinDate';
+import { getStatusWeight, resolveMonthlyState, type ResolvedMonthlyState } from '@/lib/domain/monthlyStatus';
 import type { Participant, ParticipantMonthlyStatus, ParticipantStatus } from '@/types';
 import type { RequestFn } from '@/services/types';
+import type { SeasonClose } from '@/types';
+import * as participantsService from '@/services/participants';
 import { useParticipants } from '@/hooks/useParticipants';
 import { usePayments } from '@/hooks/usePayments';
 import { useExpenses } from '@/hooks/useExpenses';
@@ -33,7 +35,8 @@ export function useTeamData(
   const configHook = useConfig(request, currentTeamId, currentMonth, addToast);
 
   const {
-    participants,
+    participants: rawParticipants,
+    handleUpdateParticipant: updateParticipantData,
     loadParticipants,
   } = participantsHook;
   const { loadPayments } = paymentsHook;
@@ -91,21 +94,55 @@ export function useTeamData(
   }, [currentTeamId]); // eslint-disable-line react-hooks/exhaustive-deps -- solo recargar al cambiar equipo
 
   const { config } = configHook;
+
+  const closedMonths = useMemo(
+    () => new Set(configHook.monthlyConfigs.map((cfg) => cfg.month)),
+    [configHook.monthlyConfigs]
+  );
+  const isMonthClosed = useCallback((month: string) => closedMonths.has(month), [closedMonths]);
+
+  const snapshotByKey = useMemo(
+    () => new Map(participantMonthlyStatuses.map((s) => [`${s.participantId}:${s.month}`, s])),
+    [participantMonthlyStatuses]
+  );
+  const rawParticipantById = useMemo(
+    () => new Map(rawParticipants.map((p) => [p.id, p])),
+    [rawParticipants]
+  );
+
+  /** Estado del jugador en el mes (estado elegido para el mes o el último arrastrado; condonación). */
+  const getMonthlyState = useCallback(
+    (p: Participant, month: string): ResolvedMonthlyState => {
+      const base = rawParticipantById.get(p.id) ?? p;
+      return resolveMonthlyState(base, snapshotByKey.get(`${p.id}:${month}`), closedMonths.has(month));
+    },
+    [rawParticipantById, snapshotByKey, closedMonths]
+  );
+
+  /** Jugadores con el estado del mes seleccionado (habilitado/deshabilitado sigue siendo global). */
+  const participants = useMemo(
+    () => rawParticipants.map((p) => ({ ...p, status: getMonthlyState(p, currentMonth).status })),
+    [rawParticipants, getMonthlyState, currentMonth]
+  );
+
+  const paidByParticipantMonth = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const pay of paymentsHook.payments) {
+      const key = `${pay.participantId}:${pay.appliedMonth ?? pay.date.slice(0, 7)}`;
+      map.set(key, (map.get(key) ?? 0) + pay.amount);
+    }
+    return map;
+  }, [paymentsHook.payments]);
+
   const monthIncludedExpenses = expensesHook.expenses
     .filter((e) => e.date.startsWith(currentMonth) && Boolean(e.includeInMonthlyShare))
     .reduce((sum, e) => sum + e.amount, 0);
   const monthlyObjective = (config.monthlyTarget || 0) + (config.fieldRental || 0) + monthIncludedExpenses;
   const baseMonthlyObjective = (config.monthlyTarget || 0) + (config.fieldRental || 0);
 
-  const getStatusWeight = (status?: ParticipantStatus | null) => {
-    if (status === 'sin_laburo') return 0;
-    if (status === 'lesionado') return 0.5;
-    if (status === 'media_cuota') return 0.5;
-    return 1;
-  };
   const effectiveParticipants =
     participants.filter(p => p.active).reduce(
-      (sum, p) => sum + getStatusWeight(p.status as ParticipantStatus),
+      (sum, p) => sum + getStatusWeight(p.status),
       0
     ) || 1;
   const monthlyShare = monthlyObjective / effectiveParticipants;
@@ -176,24 +213,63 @@ export function useTeamData(
       // joinDate manda sobre snapshots: meses previos al alta nunca generan cuota.
       if (p.joinDate && !shouldChargeForMonth(p.joinDate, month)) return 0;
 
-      const monthSnapshot = participantMonthlyStatuses.find(
-        (s) => s.participantId === p.id && s.month === month
-      );
-      const isActiveForMonth = monthSnapshot?.active ?? p.active;
-      const statusForMonth = monthSnapshot?.status ?? p.status;
-      if (!isActiveForMonth) return 0;
-      if (statusForMonth === 'sin_laburo') return 0;
+      const { active, status, debtWaived } = getMonthlyState(p, month);
+      if (!active) return 0;
       const objective = getObjectiveForMonth(month);
       const participantsForMonth = getEffectiveParticipantsForMonth(month);
       const share = participantsForMonth > 0 ? objective / participantsForMonth : 0;
-      if (statusForMonth === 'lesionado') return share / 2;
-      if (statusForMonth === 'media_cuota') return share / 2;
-      return share;
+      const required = share * getStatusWeight(status);
+      // Deuda condonada al cerrar: lo exigido queda en lo pagado (no suma pagos ni genera deuda).
+      if (debtWaived) return Math.min(required, paidByParticipantMonth.get(`${p.id}:${month}`) ?? 0);
+      return required;
     },
-    [getObjectiveForMonth, getEffectiveParticipantsForMonth, participantMonthlyStatuses]
+    [getObjectiveForMonth, getEffectiveParticipantsForMonth, getMonthlyState, paidByParticipantMonth]
   );
 
-  const handleCloseMonth = useCallback(async (): Promise<boolean> => {
+  const handleSetMonthlyStatuses = useCallback(
+    async (
+      statuses: { participantId: number; status: ParticipantStatus }[],
+      month: string = currentMonth
+    ): Promise<boolean> => {
+      if (!currentTeamId || statuses.length === 0) return false;
+      if (closedMonths.has(month)) {
+        addToast('El mes está cerrado: no se pueden cambiar los estados', 'error');
+        return false;
+      }
+      const res = await participantsService.setMonthlyStatuses(request, month, statuses);
+      if (res == null) {
+        addToast('Error guardando los estados del mes', 'error');
+        return false;
+      }
+      await Promise.all([loadParticipantMonthlyStatuses(), loadParticipants()]);
+      return true;
+    },
+    [request, currentTeamId, currentMonth, closedMonths, loadParticipantMonthlyStatuses, loadParticipants, addToast]
+  );
+
+  /** Edición del jugador: el estado se guarda para el mes seleccionado, el resto de los datos es global. */
+  const handleUpdateParticipant = useCallback(
+    async (
+      id: number,
+      name: string,
+      phone: string,
+      notes: string,
+      status?: string | null,
+      joinDateIso?: string
+    ) => {
+      await updateParticipantData(id, name, phone, notes, undefined, joinDateIso);
+      const p = rawParticipantById.get(id);
+      if (!p || !status || status === getMonthlyState(p, currentMonth).status) return;
+      const ok = await handleSetMonthlyStatuses([{ participantId: id, status: status as ParticipantStatus }]);
+      if (ok) addToast(`Estado actualizado para ${currentMonth}`, 'success');
+    },
+    [updateParticipantData, rawParticipantById, getMonthlyState, currentMonth, handleSetMonthlyStatuses, addToast]
+  );
+
+  const handleCloseMonth = useCallback(async (
+    waivedParticipantIds: number[] = [],
+    seasonClose?: SeasonClose
+  ): Promise<boolean> => {
     if (!currentTeamId) return false;
     try {
       const res = await request(`/api/config?month=${currentMonth}&teamId=${currentTeamId}`, {
@@ -205,6 +281,8 @@ export function useTeamData(
           activeParticipants,
           effectiveParticipants,
           monthlyShare,
+          ...(waivedParticipantIds.length > 0 ? { waivedParticipantIds } : {}),
+          ...(seasonClose ? { seasonClose } : {}),
         },
         disableAutoParams: true,
       });
@@ -212,6 +290,7 @@ export function useTeamData(
       await loadMonthlyConfig();
       await loadMonthlyConfigs();
       await loadParticipantMonthlyStatuses();
+      if (seasonClose) await loadParticipants();
       return true;
     } catch (error) {
       addToast(error instanceof Error ? error.message : 'Error al cerrar el mes', 'error');
@@ -230,6 +309,7 @@ export function useTeamData(
     loadMonthlyConfig,
     loadMonthlyConfigs,
     loadParticipantMonthlyStatuses,
+    loadParticipants,
     addToast,
   ]);
 
@@ -238,6 +318,9 @@ export function useTeamData(
     payments: paymentsHook.payments,
     expenses: expensesHook.expenses,
     participantMonthlyStatuses,
+    isMonthClosed,
+    getMonthlyState,
+    handleSetMonthlyStatuses,
     config: configHook.config,
     globalConfig: configHook.globalConfig,
     monthlyConfigs: configHook.monthlyConfigs,
@@ -256,7 +339,7 @@ export function useTeamData(
     monthIncludedExpenses,
     handleAddParticipant: participantsHook.handleAddParticipant,
     handleRemoveParticipant: participantsHook.handleRemoveParticipant,
-    handleUpdateParticipant: participantsHook.handleUpdateParticipant,
+    handleUpdateParticipant,
     handleToggleParticipant: participantsHook.handleToggleParticipant,
     handleAddPayment: paymentsHook.handleAddPayment,
     handleDeletePayment: paymentsHook.handleDeletePayment,

@@ -3,7 +3,8 @@
 import React, { createContext, useContext, useMemo, type ReactNode } from 'react';
 import type { RequestFn } from '@/services/types';
 import { useTeamData } from '@/hooks/useTeamData';
-import type { Participant, Payment, Expense, AppConfig, MonthlyConfig, ParticipantMonthlyStatus } from '@/types';
+import type { Participant, Payment, Expense, AppConfig, MonthlyConfig, ParticipantMonthlyStatus, ParticipantStatus, SeasonClose } from '@/types';
+import type { ResolvedMonthlyState } from '@/lib/domain/monthlyStatus';
 
 type AddToast = (message: string, type?: 'success' | 'error' | 'info') => void;
 
@@ -12,6 +13,12 @@ export interface TeamDataContextValue {
   payments: Payment[];
   expenses: Expense[];
   participantMonthlyStatuses: ParticipantMonthlyStatus[];
+  isMonthClosed: (month: string) => boolean;
+  getMonthlyState: (p: Participant, month: string) => ResolvedMonthlyState;
+  handleSetMonthlyStatuses: (
+    statuses: { participantId: number; status: ParticipantStatus }[],
+    month?: string
+  ) => Promise<boolean>;
   config: AppConfig;
   globalConfig: AppConfig;
   monthlyConfigs: MonthlyConfig[];
@@ -40,7 +47,7 @@ export interface TeamDataContextValue {
   handleDeleteExpense: (id: number) => Promise<void>;
   handleSaveConfig: (newConfig: AppConfig) => Promise<void>;
   handleResetConfig: () => Promise<void>;
-  handleCloseMonth: () => Promise<boolean>;
+  handleCloseMonth: (waivedParticipantIds?: number[], seasonClose?: SeasonClose) => Promise<boolean>;
   request: RequestFn;
   currentTeamId: number | null;
   currentMonth: string;
