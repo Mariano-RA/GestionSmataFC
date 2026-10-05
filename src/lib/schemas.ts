@@ -161,6 +161,8 @@ export const monthlyConfigSchema = z.object({
   activeParticipants: z.coerce.number().int().positive().optional(),
   effectiveParticipants: z.coerce.number().positive().optional(),
   monthlyShare: z.coerce.number().nonnegative().optional(),
+  /** true = cerrar el mes (congela estados). Sin esto solo se guarda objetivo/alquiler del mes. */
+  close: z.boolean().optional(),
   /** Jugadores a los que se les condona la deuda del mes al cerrarlo (no cuenta como pago). */
   waivedParticipantIds: z.array(z.coerce.number().int().positive()).max(500).optional(),
   /** Cierre de campeonato (último mes): condonar deuda acumulada y deshabilitar a los que no siguen. */

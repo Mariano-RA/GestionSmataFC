@@ -96,7 +96,7 @@ export function useTeamData(
   const { config } = configHook;
 
   const closedMonths = useMemo(
-    () => new Set(configHook.monthlyConfigs.map((cfg) => cfg.month)),
+    () => new Set(configHook.monthlyConfigs.filter((cfg) => cfg.closedAt).map((cfg) => cfg.month)),
     [configHook.monthlyConfigs]
   );
   const isMonthClosed = useCallback((month: string) => closedMonths.has(month), [closedMonths]);
@@ -275,6 +275,7 @@ export function useTeamData(
       const res = await request(`/api/config?month=${currentMonth}&teamId=${currentTeamId}`, {
         method: 'POST',
         body: {
+          close: true,
           monthlyTarget: config.monthlyTarget,
           rent: config.fieldRental,
           includedExpenses: monthIncludedExpenses,

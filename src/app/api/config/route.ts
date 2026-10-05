@@ -8,7 +8,7 @@ import { createAuditLog } from '@/lib/audit';
 import { monthlyConfigSchema } from '@/lib/schemas';
 import { ApiResponse } from '@/lib/api-response';
 import { logger } from '@/lib/logger';
-import { runMonthlyClose } from '@/lib/monthlyClose';
+import { runMonthlyClose, saveMonthlyTargets } from '@/lib/monthlyClose';
 
 // GET config
 export async function GET(request: NextRequest) {
@@ -119,12 +119,26 @@ export async function POST(request: NextRequest) {
       if (!validation.success) {
         return ApiResponse.fromZodError(validation.error);
       }
+      const { close, waivedParticipantIds, seasonClose, ...numbers } = validation.data;
+
+      // Configuración del mes (objetivo/alquiler) sin cerrarlo.
+      if (!close) {
+        const monthConfig = await saveMonthlyTargets(db, {
+          teamId: parsedTeamId,
+          month,
+          userId,
+          ip,
+          monthlyTarget: numbers.monthlyTarget,
+          rent: numbers.rent,
+        });
+        return ApiResponse.created(monthConfig);
+      }
+
       const teamParticipants = await db.participant.findMany({
         where: { teamId: parsedTeamId },
         select: { id: true, active: true, status: true, joinDate: true },
       });
 
-      const { waivedParticipantIds, seasonClose, ...numbers } = validation.data;
       const config = await runMonthlyClose(db, {
         teamId: parsedTeamId,
         month,

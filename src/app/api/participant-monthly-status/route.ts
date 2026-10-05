@@ -64,11 +64,11 @@ export async function PUT(request: NextRequest) {
     const auth = await validateProtectedTeamRouteWithMethod(request, db, teamId, 'PATCH');
     if (!auth.authorized) return ApiResponse.unauthorized(auth.error);
 
-    const closed = await db.monthlyConfig.findUnique({
+    const monthConfig = await db.monthlyConfig.findUnique({
       where: { teamId_month: { teamId, month } },
-      select: { id: true },
+      select: { closedAt: true },
     });
-    if (closed) {
+    if (monthConfig?.closedAt) {
       return ApiResponse.badRequest('El mes ya está cerrado; no se pueden cambiar los estados');
     }
 

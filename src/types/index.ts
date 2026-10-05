@@ -126,6 +126,8 @@ export interface MonthlyConfig {
   activeParticipants?: number | null;
   effectiveParticipants?: number | null;
   monthlyShare?: number | null;
+  /** Fecha de cierre del mes. Sin valor = mes abierto (puede tener config propia igual). */
+  closedAt?: string | null;
 }
 
 /** Respuesta de GET /api/config?month=YYYY-MM: siempre incluye fieldRental para unificar con AppConfig. */

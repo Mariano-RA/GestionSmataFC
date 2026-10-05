@@ -181,6 +181,7 @@ model MonthlyConfig {
   activeParticipants Int?
   effectiveParticipants Float?
   monthlyShare Float?
+  closedAt  DateTime? // solo lo completa "Cerrar mes"; guardar config del mes no lo cierra
   team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

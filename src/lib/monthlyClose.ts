@@ -96,6 +96,7 @@ export async function runMonthlyClose(
         activeParticipants: snapshotActiveParticipants,
         effectiveParticipants: snapshotEffectiveParticipants,
         monthlyShare: snapshotMonthlyShare,
+        closedAt: new Date(),
       },
       create: {
         teamId,
@@ -106,6 +107,7 @@ export async function runMonthlyClose(
         activeParticipants: snapshotActiveParticipants,
         effectiveParticipants: snapshotEffectiveParticipants,
         monthlyShare: snapshotMonthlyShare,
+        closedAt: new Date(),
       },
     });
     await Promise.all(
@@ -199,6 +201,38 @@ export async function runMonthlyClose(
     );
     return upserted;
   }, { timeout: 30000 });
+}
+
+/**
+ * Guarda objetivo y alquiler propios de un mes (pantalla de Configuración) sin cerrarlo:
+ * no congela estados ni marca `closedAt`. Si el mes ya estaba cerrado, sigue cerrado.
+ */
+export async function saveMonthlyTargets(
+  prisma: PrismaClient,
+  params: { teamId: number; month: string; userId: number; ip?: string; monthlyTarget: number; rent: number }
+) {
+  const { teamId, month, userId, ip, monthlyTarget, rent } = params;
+  return prisma.$transaction(async (tx) => {
+    const upserted = await tx.monthlyConfig.upsert({
+      where: { teamId_month: { teamId, month } },
+      update: { monthlyTarget, rent },
+      create: { teamId, month, monthlyTarget, rent },
+    });
+    await createAuditLog(
+      {
+        teamId,
+        userId,
+        action: 'UPDATE',
+        entity: 'MonthlyConfig',
+        entityId: upserted.id,
+        description: `Objetivo/alquiler del mes actualizados: ${month}`,
+        metadata: { month, monthlyTarget, rent },
+        ipAddress: ip,
+      },
+      tx
+    );
+    return upserted;
+  });
 }
 
 async function loadGlobalTeamTargetAndRent(prisma: PrismaClient, teamId: number) {

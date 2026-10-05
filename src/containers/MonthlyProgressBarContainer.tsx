@@ -83,7 +83,7 @@ export default function MonthlyProgressBarContainer() {
     !dismissedReviews.has(reviewKey) &&
     isStatusReviewMonth(
       data.currentMonth,
-      data.monthlyConfigs.map((cfg) => cfg.month),
+      data.monthlyConfigs.filter((cfg) => cfg.closedAt).map((cfg) => cfg.month),
       getCurrentMonth()
     );
 
